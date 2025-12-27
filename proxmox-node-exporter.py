@@ -1215,7 +1215,7 @@ class EnhancedProxmoxExporter:
                             for fan in fan_list:
                                 self.fan_rpm.labels(
                                     chip=chip_name,
-                                    sensor=fan.label or 'unknown'
+                                    sensor=self._choose_sensor_name(fan.label or 'unknown', fan.label)
                                 ).set(fan.current)
                                 collected_any = True
                 
@@ -1240,6 +1240,13 @@ class EnhancedProxmoxExporter:
     
     def _sanitize_sensor_label(self, value: str) -> str:
         return re.sub(r'[^a-zA-Z0-9_]+', '_', value.strip()) or 'unknown'
+
+    def _choose_sensor_name(self, sensor_name: str, label: Optional[str]) -> str:
+        if label:
+            sanitized = self._sanitize_sensor_label(label)
+            if sanitized != 'unknown':
+                return sanitized
+        return self._sanitize_sensor_label(sensor_name)
     
     def _record_sensor_value(self, chip_name: str, sensor_name: str, label: str, key: str, value: float) -> bool:
         """Record a sensor value based on key naming convention."""
@@ -1264,19 +1271,24 @@ class EnhancedProxmoxExporter:
                 self.temp_alarm.labels(chip=chip_name, sensor=sensor_name, label=label).set(value)
                 return True
         elif prefix == 'fan' and suffix == 'input':
-            self.fan_rpm.labels(chip=chip_name, sensor=sensor_name).set(value)
+            sensor_label = self._choose_sensor_name(sensor_name, label)
+            self.fan_rpm.labels(chip=chip_name, sensor=sensor_label).set(value)
             return True
         elif prefix == 'fan' and suffix == 'min':
-            self.fan_min.labels(chip=chip_name, sensor=sensor_name).set(value)
+            sensor_label = self._choose_sensor_name(sensor_name, label)
+            self.fan_min.labels(chip=chip_name, sensor=sensor_label).set(value)
             return True
         elif prefix == 'in' and suffix == 'input':
-            self.voltage_volts.labels(chip=chip_name, sensor=sensor_name).set(value)
+            sensor_label = self._choose_sensor_name(sensor_name, label)
+            self.voltage_volts.labels(chip=chip_name, sensor=sensor_label).set(value)
             return True
         elif prefix == 'curr' and suffix == 'input':
-            self.current_amps.labels(chip=chip_name, sensor=sensor_name).set(value)
+            sensor_label = self._choose_sensor_name(sensor_name, label)
+            self.current_amps.labels(chip=chip_name, sensor=sensor_label).set(value)
             return True
         elif prefix == 'power' and suffix in ('input', 'average'):
-            self.power_watts.labels(chip=chip_name, sensor=sensor_name).set(value)
+            sensor_label = self._choose_sensor_name(sensor_name, label)
+            self.power_watts.labels(chip=chip_name, sensor=sensor_label).set(value)
             return True
         
         return False
@@ -1471,14 +1483,20 @@ class EnhancedProxmoxExporter:
 
                         with open(fan_input, 'r') as f:
                             rpm = float(f.read().strip())
-                            self.fan_rpm.labels(chip=chip_name, sensor=label).set(rpm)
+                            self.fan_rpm.labels(
+                                chip=chip_name,
+                                sensor=self._choose_sensor_name(label, label)
+                            ).set(rpm)
                             collected = True
 
                         fan_min_file = fan_input.replace('_input', '_min')
                         if os.path.exists(fan_min_file):
                             with open(fan_min_file, 'r') as f:
                                 fan_min = float(f.read().strip())
-                                self.fan_min.labels(chip=chip_name, sensor=label).set(fan_min)
+                                self.fan_min.labels(
+                                    chip=chip_name,
+                                    sensor=self._choose_sensor_name(label, label)
+                                ).set(fan_min)
                                 collected = True
                     except Exception:
                         continue
@@ -1499,7 +1517,10 @@ class EnhancedProxmoxExporter:
                         
                         with open(voltage_input, 'r') as f:
                             voltage = float(f.read().strip()) / 1000.0  # Convert mV to V
-                            self.voltage_volts.labels(chip=chip_name, sensor=label).set(voltage)
+                            self.voltage_volts.labels(
+                                chip=chip_name,
+                                sensor=self._choose_sensor_name(label, label)
+                            ).set(voltage)
                             collected = True
                     except Exception:
                         continue
@@ -1520,7 +1541,10 @@ class EnhancedProxmoxExporter:
                         
                         with open(current_input, 'r') as f:
                             current = float(f.read().strip()) / 1000.0  # Convert mA to A
-                            self.current_amps.labels(chip=chip_name, sensor=label).set(current)
+                            self.current_amps.labels(
+                                chip=chip_name,
+                                sensor=self._choose_sensor_name(label, label)
+                            ).set(current)
                             collected = True
                     except Exception:
                         continue
@@ -1541,7 +1565,10 @@ class EnhancedProxmoxExporter:
                         
                         with open(power_input, 'r') as f:
                             power = float(f.read().strip()) / 1000000.0  # Convert μW to W
-                            self.power_watts.labels(chip=chip_name, sensor=label).set(power)
+                            self.power_watts.labels(
+                                chip=chip_name,
+                                sensor=self._choose_sensor_name(label, label)
+                            ).set(power)
                             collected = True
                     except Exception:
                         continue
