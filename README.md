@@ -60,7 +60,7 @@ apt install -y python3-pip
 pip3 install prometheus-client psutil
 
 # Optional but recommended
-apt install -y lm-sensors sysstat smartmontools nvme-cli
+apt install -y lm-sensors libsensors5 i2c-tools sysstat smartmontools nvme-cli
 
 # Auto-detect sensors
 sensors-detect --auto 2>/dev/null || true
@@ -475,6 +475,7 @@ The exporter automatically detects available features and only collects relevant
 - `node_hwmon_temp_crit_celsius` - Critical thresholds
 - `node_hwmon_fan_rpm` - Fan speeds
 - `node_hwmon_power_watt` - Power consumption
+- Parsing sources: psutil sensors APIs, `/sys/class/hwmon`, and `sensors -j` (JSON) with a `sensors -u` fallback for older lm-sensors versions.
 
 #### 🎮 GPU Metrics (if GPU detected)
 ##### NVIDIA GPUs:

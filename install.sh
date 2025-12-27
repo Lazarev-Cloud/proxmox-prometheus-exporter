@@ -37,7 +37,7 @@ msg "Installing OS deps…"
 apt update -y
 apt install -y --no-install-recommends \
   python3 python3-venv curl ca-certificates \
-  lm-sensors sysstat smartmontools nvme-cli
+  lm-sensors libsensors5 i2c-tools sysstat smartmontools nvme-cli
 
 # -------- PYTHON DEPS: apt -> venv --------
 PYBIN="/usr/bin/python3"

@@ -201,8 +201,14 @@ class EnhancedProxmoxExporter:
     def _detect_sensors(self):
         """Detect temperature sensors"""
         if shutil.which('sensors'):
-            result = subprocess.run(['sensors'], capture_output=True, text=True, timeout=2)
-            return result.returncode == 0 and len(result.stdout) > 10
+            for args in (['sensors', '-j'], ['sensors', '-u'], ['sensors']):
+                try:
+                    result = subprocess.run(args, capture_output=True, text=True, timeout=2)
+                except subprocess.TimeoutExpired:
+                    continue
+                if result.returncode == 0 and len(result.stdout) > 10:
+                    return True
+            return False
         return False
     
     def _detect_zfs(self):
@@ -1168,6 +1174,7 @@ class EnhancedProxmoxExporter:
         
         try:
             with self.collection_duration.labels(collector='temperature').time():
+                collected_any = False
                 # Try psutil first (more reliable)
                 if hasattr(psutil, 'sensors_temperatures'):
                     temps = psutil.sensors_temperatures()
@@ -1182,6 +1189,7 @@ class EnhancedProxmoxExporter:
                                 sensor=sensor_name,
                                 label=label
                             ).set(sensor.current)
+                            collected_any = True
                             
                             if sensor.high and sensor.high > -273:
                                 self.temp_max.labels(
@@ -1196,6 +1204,7 @@ class EnhancedProxmoxExporter:
                                     sensor=sensor_name,
                                     label=label
                                 ).set(sensor.critical)
+                                collected_any = True
                     
                     # Fan speeds
                     if hasattr(psutil, 'sensors_fans'):
@@ -1207,23 +1216,157 @@ class EnhancedProxmoxExporter:
                                     chip=chip_name,
                                     sensor=fan.label or 'unknown'
                                 ).set(fan.current)
+                                collected_any = True
                 
                 # Also check hwmon sysfs directly for more sensors
-                self._collect_hwmon_sensors()
+                if self._collect_hwmon_sensors():
+                    collected_any = True
                 
-                self.collection_success.labels(collector='temperature').set(1)
+                if self._collect_lmsensors_json():
+                    collected_any = True
+                elif self._collect_lmsensors_text():
+                    collected_any = True
+                
+                self.collection_success.labels(collector='temperature').set(1 if collected_any else 0)
                 
         except Exception as e:
             logger.error(f"Error collecting temperature metrics: {e}")
             self.collection_errors.labels(collector='temperature').inc()
             self.collection_success.labels(collector='temperature').set(0)
     
+    def _sanitize_sensor_label(self, value: str) -> str:
+        return re.sub(r'[^a-zA-Z0-9_]+', '_', value.strip()) or 'unknown'
+    
+    def _record_sensor_value(self, chip_name: str, sensor_name: str, label: str, key: str, value: float) -> bool:
+        """Record a sensor value based on key naming convention."""
+        match = re.match(r'([a-zA-Z]+)\d*', sensor_name)
+        if not match:
+            return False
+        
+        prefix = match.group(1).lower()
+        suffix = key.rsplit('_', 1)[-1].lower()
+        
+        if prefix == 'temp':
+            if suffix == 'input':
+                self.temp_celsius.labels(chip=chip_name, sensor=sensor_name, label=label).set(value)
+                return True
+            if suffix == 'max':
+                self.temp_max.labels(chip=chip_name, sensor=sensor_name, label=label).set(value)
+                return True
+            if suffix == 'crit':
+                self.temp_crit.labels(chip=chip_name, sensor=sensor_name, label=label).set(value)
+                return True
+        elif prefix == 'fan' and suffix == 'input':
+            self.fan_rpm.labels(chip=chip_name, sensor=sensor_name).set(value)
+            return True
+        elif prefix == 'in' and suffix == 'input':
+            self.voltage_volts.labels(chip=chip_name, sensor=sensor_name).set(value)
+            return True
+        elif prefix == 'curr' and suffix == 'input':
+            self.current_amps.labels(chip=chip_name, sensor=sensor_name).set(value)
+            return True
+        elif prefix == 'power' and suffix in ('input', 'average'):
+            self.power_watts.labels(chip=chip_name, sensor=sensor_name).set(value)
+            return True
+        
+        return False
+    
+    def _collect_lmsensors_json(self) -> bool:
+        """Collect sensors via lm-sensors JSON output."""
+        if not shutil.which('sensors'):
+            return False
+        
+        try:
+            result = subprocess.run(['sensors', '-j'], capture_output=True, text=True, timeout=3)
+            if result.returncode != 0 or not result.stdout.strip():
+                return False
+            
+            data = json.loads(result.stdout)
+            collected = False
+            
+            for chip, chip_data in data.items():
+                if not isinstance(chip_data, dict):
+                    continue
+                chip_name = self._sanitize_sensor_label(chip)
+                
+                for group_name, group_data in chip_data.items():
+                    if group_name == 'Adapter' or not isinstance(group_data, dict):
+                        continue
+                    
+                    label = group_name
+                    for key, raw_value in group_data.items():
+                        if not isinstance(raw_value, (int, float)):
+                            continue
+                        if '_' not in key:
+                            continue
+                        
+                        sensor_name = self._sanitize_sensor_label(key.rsplit('_', 1)[0])
+                        if self._record_sensor_value(chip_name, sensor_name, label, key, float(raw_value)):
+                            collected = True
+            
+            return collected
+        except (json.JSONDecodeError, subprocess.TimeoutExpired) as e:
+            logger.debug(f"Failed to parse sensors JSON output: {e}")
+        except Exception as e:
+            logger.debug(f"Error collecting sensors JSON: {e}")
+        
+        return False
+    
+    def _collect_lmsensors_text(self) -> bool:
+        """Collect sensors via lm-sensors text output (-u)."""
+        if not shutil.which('sensors'):
+            return False
+        
+        try:
+            result = subprocess.run(['sensors', '-u'], capture_output=True, text=True, timeout=3)
+            if result.returncode != 0 or not result.stdout.strip():
+                return False
+            
+            collected = False
+            chip_name = None
+            label = None
+            
+            for line in result.stdout.splitlines():
+                if not line.strip():
+                    continue
+                
+                if not line.startswith(' '):
+                    if line.startswith('Adapter:'):
+                        continue
+                    if line.rstrip().endswith(':'):
+                        label = line.rstrip().rstrip(':').strip()
+                        continue
+                    chip_name = self._sanitize_sensor_label(line.strip())
+                    label = None
+                    continue
+                
+                match = re.match(r'^\s+([a-zA-Z0-9_]+):\s+([-+]?\d+(?:\.\d+)?)', line)
+                if not match or not chip_name:
+                    continue
+                
+                key = match.group(1)
+                value = float(match.group(2))
+                sensor_name = self._sanitize_sensor_label(key.rsplit('_', 1)[0])
+                sensor_label = label or sensor_name
+                
+                if self._record_sensor_value(chip_name, sensor_name, sensor_label, key, value):
+                    collected = True
+            
+            return collected
+        except subprocess.TimeoutExpired as e:
+            logger.debug(f"Failed to parse sensors text output: {e}")
+        except Exception as e:
+            logger.debug(f"Error collecting sensors text: {e}")
+        
+        return False
+    
     def _collect_hwmon_sensors(self):
         """Collect additional sensors from hwmon sysfs"""
+        collected = False
         try:
             hwmon_path = '/sys/class/hwmon'
             if not os.path.exists(hwmon_path):
-                return
+                return collected
             
             for hwmon in os.listdir(hwmon_path):
                 hwmon_dir = os.path.join(hwmon_path, hwmon)
@@ -1235,11 +1378,15 @@ class EnhancedProxmoxExporter:
                     
                 with open(name_file, 'r') as f:
                     chip_name = f.read().strip()
+                chip_name = self._sanitize_sensor_label(chip_name)
                 
                 # Voltage sensors
                 for voltage_input in glob.glob(os.path.join(hwmon_dir, 'in*_input')):
                     try:
-                        sensor_num = re.search(r'in(\d+)_input', voltage_input).group(1)
+                        sensor_num_match = re.search(r'in(\d+)_input', voltage_input)
+                        if not sensor_num_match:
+                            continue
+                        sensor_num = sensor_num_match.group(1)
                         label_file = voltage_input.replace('_input', '_label')
                         
                         label = f'in{sensor_num}'
@@ -1250,13 +1397,17 @@ class EnhancedProxmoxExporter:
                         with open(voltage_input, 'r') as f:
                             voltage = float(f.read().strip()) / 1000.0  # Convert mV to V
                             self.voltage_volts.labels(chip=chip_name, sensor=label).set(voltage)
-                    except:
-                        pass
+                            collected = True
+                    except Exception:
+                        continue
                 
                 # Current sensors
                 for current_input in glob.glob(os.path.join(hwmon_dir, 'curr*_input')):
                     try:
-                        sensor_num = re.search(r'curr(\d+)_input', current_input).group(1)
+                        sensor_num_match = re.search(r'curr(\d+)_input', current_input)
+                        if not sensor_num_match:
+                            continue
+                        sensor_num = sensor_num_match.group(1)
                         label_file = current_input.replace('_input', '_label')
                         
                         label = f'curr{sensor_num}'
@@ -1267,13 +1418,17 @@ class EnhancedProxmoxExporter:
                         with open(current_input, 'r') as f:
                             current = float(f.read().strip()) / 1000.0  # Convert mA to A
                             self.current_amps.labels(chip=chip_name, sensor=label).set(current)
-                    except:
-                        pass
+                            collected = True
+                    except Exception:
+                        continue
                 
                 # Power sensors
                 for power_input in glob.glob(os.path.join(hwmon_dir, 'power*_input')):
                     try:
-                        sensor_num = re.search(r'power(\d+)_input', power_input).group(1)
+                        sensor_num_match = re.search(r'power(\d+)_input', power_input)
+                        if not sensor_num_match:
+                            continue
+                        sensor_num = sensor_num_match.group(1)
                         label_file = power_input.replace('_input', '_label')
                         
                         label = f'power{sensor_num}'
@@ -1284,10 +1439,13 @@ class EnhancedProxmoxExporter:
                         with open(power_input, 'r') as f:
                             power = float(f.read().strip()) / 1000000.0  # Convert μW to W
                             self.power_watts.labels(chip=chip_name, sensor=label).set(power)
-                    except:
-                        pass
+                            collected = True
+                    except Exception:
+                        continue
         except Exception as e:
             logger.debug(f"Error collecting hwmon sensors: {e}")
+        
+        return collected
     
     def collect_systemd_metrics(self):
         """Collect systemd service metrics"""
