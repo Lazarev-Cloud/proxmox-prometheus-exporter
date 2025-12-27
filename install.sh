@@ -73,8 +73,10 @@ fi
 msg "Detecting sensors…"
 yes | sensors-detect --auto >/dev/null 2>&1 || true
 modprobe coretemp 2>/dev/null || true
+modprobe k10temp 2>/dev/null || true
 modprobe nct6775 2>/dev/null || true
 grep -q '^coretemp$' /etc/modules 2>/dev/null || echo coretemp >> /etc/modules || true
+grep -q '^k10temp$' /etc/modules 2>/dev/null || echo k10temp >> /etc/modules || true
 
 # -------- FETCH EXPORTER --------
 msg "Fetching exporter script…"

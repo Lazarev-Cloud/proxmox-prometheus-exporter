@@ -473,7 +473,9 @@ The exporter automatically detects available features and only collects relevant
 - `node_hwmon_temp_celsius` - Temperature readings
 - `node_hwmon_temp_max_celsius` - Maximum thresholds
 - `node_hwmon_temp_crit_celsius` - Critical thresholds
+- `node_hwmon_temp_alarm` - Temperature alarm states
 - `node_hwmon_fan_rpm` - Fan speeds
+- `node_hwmon_fan_min_rpm` - Minimum fan speeds
 - `node_hwmon_power_watt` - Power consumption
 - Parsing sources: psutil sensors APIs, `/sys/class/hwmon`, and `sensors -j` (JSON) with a `sensors -u` fallback for older lm-sensors versions.
 

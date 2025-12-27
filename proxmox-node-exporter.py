@@ -1256,8 +1256,14 @@ class EnhancedProxmoxExporter:
             if suffix == 'crit':
                 self.temp_crit.labels(chip=chip_name, sensor=sensor_name, label=label).set(value)
                 return True
+            if suffix in ('alarm', 'crit_alarm'):
+                self.temp_alarm.labels(chip=chip_name, sensor=sensor_name, label=label).set(value)
+                return True
         elif prefix == 'fan' and suffix == 'input':
             self.fan_rpm.labels(chip=chip_name, sensor=sensor_name).set(value)
+            return True
+        elif prefix == 'fan' and suffix == 'min':
+            self.fan_min.labels(chip=chip_name, sensor=sensor_name).set(value)
             return True
         elif prefix == 'in' and suffix == 'input':
             self.voltage_volts.labels(chip=chip_name, sensor=sensor_name).set(value)
@@ -1379,6 +1385,92 @@ class EnhancedProxmoxExporter:
                 with open(name_file, 'r') as f:
                     chip_name = f.read().strip()
                 chip_name = self._sanitize_sensor_label(chip_name)
+
+                # Temperature sensors
+                for temp_input in glob.glob(os.path.join(hwmon_dir, 'temp*_input')):
+                    try:
+                        sensor_num_match = re.search(r'temp(\d+)_input', temp_input)
+                        if not sensor_num_match:
+                            continue
+                        sensor_num = sensor_num_match.group(1)
+                        label_file = temp_input.replace('_input', '_label')
+
+                        label = f'temp{sensor_num}'
+                        if os.path.exists(label_file):
+                            with open(label_file, 'r') as f:
+                                label = f.read().strip()
+
+                        with open(temp_input, 'r') as f:
+                            temp_c = float(f.read().strip()) / 1000.0
+                            self.temp_celsius.labels(
+                                chip=chip_name,
+                                sensor=f'temp{sensor_num}',
+                                label=label
+                            ).set(temp_c)
+                            collected = True
+
+                        temp_max_file = temp_input.replace('_input', '_max')
+                        if os.path.exists(temp_max_file):
+                            with open(temp_max_file, 'r') as f:
+                                temp_max = float(f.read().strip()) / 1000.0
+                                self.temp_max.labels(
+                                    chip=chip_name,
+                                    sensor=f'temp{sensor_num}',
+                                    label=label
+                                ).set(temp_max)
+                                collected = True
+
+                        temp_crit_file = temp_input.replace('_input', '_crit')
+                        if os.path.exists(temp_crit_file):
+                            with open(temp_crit_file, 'r') as f:
+                                temp_crit = float(f.read().strip()) / 1000.0
+                                self.temp_crit.labels(
+                                    chip=chip_name,
+                                    sensor=f'temp{sensor_num}',
+                                    label=label
+                                ).set(temp_crit)
+                                collected = True
+
+                        temp_alarm_file = temp_input.replace('_input', '_alarm')
+                        if os.path.exists(temp_alarm_file):
+                            with open(temp_alarm_file, 'r') as f:
+                                alarm = float(f.read().strip())
+                                self.temp_alarm.labels(
+                                    chip=chip_name,
+                                    sensor=f'temp{sensor_num}',
+                                    label=label
+                                ).set(alarm)
+                                collected = True
+                    except Exception:
+                        continue
+
+                # Fan sensors
+                for fan_input in glob.glob(os.path.join(hwmon_dir, 'fan*_input')):
+                    try:
+                        sensor_num_match = re.search(r'fan(\d+)_input', fan_input)
+                        if not sensor_num_match:
+                            continue
+                        sensor_num = sensor_num_match.group(1)
+                        label_file = fan_input.replace('_input', '_label')
+
+                        label = f'fan{sensor_num}'
+                        if os.path.exists(label_file):
+                            with open(label_file, 'r') as f:
+                                label = f.read().strip()
+
+                        with open(fan_input, 'r') as f:
+                            rpm = float(f.read().strip())
+                            self.fan_rpm.labels(chip=chip_name, sensor=label).set(rpm)
+                            collected = True
+
+                        fan_min_file = fan_input.replace('_input', '_min')
+                        if os.path.exists(fan_min_file):
+                            with open(fan_min_file, 'r') as f:
+                                fan_min = float(f.read().strip())
+                                self.fan_min.labels(chip=chip_name, sensor=label).set(fan_min)
+                                collected = True
+                    except Exception:
+                        continue
                 
                 # Voltage sensors
                 for voltage_input in glob.glob(os.path.join(hwmon_dir, 'in*_input')):
