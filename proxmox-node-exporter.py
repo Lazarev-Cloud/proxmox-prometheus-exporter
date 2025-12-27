@@ -1175,6 +1175,7 @@ class EnhancedProxmoxExporter:
         try:
             with self.collection_duration.labels(collector='temperature').time():
                 collected_any = False
+                lm_sensors_chips = set()
                 # Try psutil first (more reliable)
                 if hasattr(psutil, 'sensors_temperatures'):
                     temps = psutil.sensors_temperatures()
@@ -1219,12 +1220,15 @@ class EnhancedProxmoxExporter:
                                 collected_any = True
                 
                 # Also check hwmon sysfs directly for more sensors
-                if self._collect_hwmon_sensors():
+                lm_sensors_found, lm_sensors_chips = self._collect_lmsensors_json()
+                if lm_sensors_found:
                     collected_any = True
-                
-                if self._collect_lmsensors_json():
-                    collected_any = True
-                elif self._collect_lmsensors_text():
+                else:
+                    lm_sensors_found, lm_sensors_chips = self._collect_lmsensors_text()
+                    if lm_sensors_found:
+                        collected_any = True
+
+                if self._collect_hwmon_sensors(skip_chip_prefixes=lm_sensors_chips):
                     collected_any = True
                 
                 self.collection_success.labels(collector='temperature').set(1 if collected_any else 0)
@@ -1277,23 +1281,25 @@ class EnhancedProxmoxExporter:
         
         return False
     
-    def _collect_lmsensors_json(self) -> bool:
+    def _collect_lmsensors_json(self) -> Tuple[bool, set]:
         """Collect sensors via lm-sensors JSON output."""
         if not shutil.which('sensors'):
-            return False
+            return False, set()
         
         try:
             result = subprocess.run(['sensors', '-j'], capture_output=True, text=True, timeout=3)
             if result.returncode != 0 or not result.stdout.strip():
-                return False
+                return False, set()
             
             data = json.loads(result.stdout)
             collected = False
+            chips = set()
             
             for chip, chip_data in data.items():
                 if not isinstance(chip_data, dict):
                     continue
                 chip_name = self._sanitize_sensor_label(chip)
+                chips.add(chip_name)
                 
                 for group_name, group_data in chip_data.items():
                     if group_name == 'Adapter' or not isinstance(group_data, dict):
@@ -1310,27 +1316,28 @@ class EnhancedProxmoxExporter:
                         if self._record_sensor_value(chip_name, sensor_name, label, key, float(raw_value)):
                             collected = True
             
-            return collected
+            return collected, chips
         except (json.JSONDecodeError, subprocess.TimeoutExpired) as e:
             logger.debug(f"Failed to parse sensors JSON output: {e}")
         except Exception as e:
             logger.debug(f"Error collecting sensors JSON: {e}")
         
-        return False
+        return False, set()
     
-    def _collect_lmsensors_text(self) -> bool:
+    def _collect_lmsensors_text(self) -> Tuple[bool, set]:
         """Collect sensors via lm-sensors text output (-u)."""
         if not shutil.which('sensors'):
-            return False
+            return False, set()
         
         try:
             result = subprocess.run(['sensors', '-u'], capture_output=True, text=True, timeout=3)
             if result.returncode != 0 or not result.stdout.strip():
-                return False
+                return False, set()
             
             collected = False
             chip_name = None
             label = None
+            chips = set()
             
             for line in result.stdout.splitlines():
                 if not line.strip():
@@ -1343,6 +1350,7 @@ class EnhancedProxmoxExporter:
                         label = line.rstrip().rstrip(':').strip()
                         continue
                     chip_name = self._sanitize_sensor_label(line.strip())
+                    chips.add(chip_name)
                     label = None
                     continue
                 
@@ -1358,15 +1366,15 @@ class EnhancedProxmoxExporter:
                 if self._record_sensor_value(chip_name, sensor_name, sensor_label, key, value):
                     collected = True
             
-            return collected
+            return collected, chips
         except subprocess.TimeoutExpired as e:
             logger.debug(f"Failed to parse sensors text output: {e}")
         except Exception as e:
             logger.debug(f"Error collecting sensors text: {e}")
         
-        return False
+        return False, set()
     
-    def _collect_hwmon_sensors(self):
+    def _collect_hwmon_sensors(self, skip_chip_prefixes: Optional[set] = None):
         """Collect additional sensors from hwmon sysfs"""
         collected = False
         try:
@@ -1385,7 +1393,10 @@ class EnhancedProxmoxExporter:
                 with open(name_file, 'r') as f:
                     chip_name = f.read().strip()
                 chip_name = self._sanitize_sensor_label(chip_name)
-
+                if skip_chip_prefixes:
+                    if any(chip.startswith(chip_name) for chip in skip_chip_prefixes):
+                        continue
+                
                 # Temperature sensors
                 for temp_input in glob.glob(os.path.join(hwmon_dir, 'temp*_input')):
                     try:
