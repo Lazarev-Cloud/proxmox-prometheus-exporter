@@ -1318,14 +1318,24 @@ class EnhancedProxmoxExporter:
                         continue
                     
                     label = group_name
+                    label_map = {}
+                    for key, raw_value in group_data.items():
+                        if not isinstance(raw_value, str):
+                            continue
+                        if not key.endswith('_label'):
+                            continue
+                        sensor_key = key.rsplit('_', 1)[0]
+                        label_map[sensor_key] = raw_value
                     for key, raw_value in group_data.items():
                         if not isinstance(raw_value, (int, float)):
                             continue
                         if '_' not in key:
                             continue
                         
-                        sensor_name = self._sanitize_sensor_label(key.rsplit('_', 1)[0])
-                        if self._record_sensor_value(chip_name, sensor_name, label, key, float(raw_value)):
+                        sensor_base = key.rsplit('_', 1)[0]
+                        sensor_name = self._sanitize_sensor_label(sensor_base)
+                        sensor_label = label_map.get(sensor_base, label)
+                        if self._record_sensor_value(chip_name, sensor_name, sensor_label, key, float(raw_value)):
                             collected = True
             
             return collected, chips
