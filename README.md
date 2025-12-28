@@ -110,14 +110,19 @@ apt install -y intel-gpu-tools
 # Create directory for the exporter
 mkdir -p /opt/proxmox-exporter
 
-# Copy the Python script to the server
+# Copy the Python script and module package to the server
 cat > /opt/proxmox-exporter/node_exporter.py << 'EOF'
 # [Paste the Python script here]
 EOF
 
+# Copy the proxmox_exporter/ directory alongside node_exporter.py
+# (it contains the modular exporter package)
+
 # Make it executable
 chmod +x /opt/proxmox-exporter/node_exporter.py
 ```
+
+> **Note:** The exporter is modular. Keep the `proxmox_exporter/` package directory alongside `node_exporter.py` when deploying.
 
 ### 3. Create Systemd Service
 ```bash
