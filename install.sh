@@ -13,6 +13,7 @@ INSTALL_DIR="/opt/proxmox-exporter"
 PY_SCRIPT="${INSTALL_DIR}/node_exporter.py"
 VENV_DIR="${INSTALL_DIR}/.venv"
 SERVICE_NAME="proxmox-node-exporter.service"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # URL до python-скрипта экспортёра.
 # Можно переопределить: EXPORTER_URL="https://..." ./install-proxmox-exporter.sh
@@ -37,7 +38,7 @@ msg "Installing OS deps…"
 apt update -y
 apt install -y --no-install-recommends \
   python3 python3-venv curl ca-certificates \
-  lm-sensors sysstat smartmontools nvme-cli
+  lm-sensors libsensors5 i2c-tools sysstat smartmontools nvme-cli
 
 # -------- PYTHON DEPS: apt -> venv --------
 PYBIN="/usr/bin/python3"
@@ -73,23 +74,50 @@ fi
 msg "Detecting sensors…"
 yes | sensors-detect --auto >/dev/null 2>&1 || true
 modprobe coretemp 2>/dev/null || true
+modprobe k10temp 2>/dev/null || true
 modprobe nct6775 2>/dev/null || true
 grep -q '^coretemp$' /etc/modules 2>/dev/null || echo coretemp >> /etc/modules || true
+grep -q '^k10temp$' /etc/modules 2>/dev/null || echo k10temp >> /etc/modules || true
 
 # -------- FETCH EXPORTER --------
 msg "Fetching exporter script…"
 mkdir -p "${INSTALL_DIR}"
 
-curl_args=( -fsSL --retry 3 --retry-connrefused --retry-delay 2 -H 'Cache-Control: no-cache' )
-[ -n "${AUTH_HEADER}" ] && curl_args+=( -H "${AUTH_HEADER}" )
+if [ -d "${SCRIPT_DIR}/proxmox_exporter" ] && [ -f "${SCRIPT_DIR}/proxmox-node-exporter.py" ]; then
+  msg "Using local modular exporter files…"
+  cp "${SCRIPT_DIR}/proxmox-node-exporter.py" "${PY_SCRIPT}"
+  cp -r "${SCRIPT_DIR}/proxmox_exporter" "${INSTALL_DIR}/"
+else
+  curl_args=( -fsSL --retry 3 --retry-connrefused --retry-delay 2 -H 'Cache-Control: no-cache' )
+  [ -n "${AUTH_HEADER}" ] && curl_args+=( -H "${AUTH_HEADER}" )
 
-curl "${curl_args[@]}" "${EXPORTER_URL}&ts=$(date +%s)" -o "${PY_SCRIPT}" \
-  || die "Download failed. Для приватных объектов используй presign или AUTH_COOKIE."
+  curl "${curl_args[@]}" "${EXPORTER_URL}&ts=$(date +%s)" -o "${PY_SCRIPT}" \
+    || die "Download failed. Для приватных объектов используй presign или AUTH_COOKIE."
 
-# защитимся от HTML-ответов
-if head -n1 "${PY_SCRIPT}" | grep -qi '<!DOCTYPE html>'; then
-  rm -f "${PY_SCRIPT}"
-  die "MinIO вернул HTML (скорее всего 401/403). Сгенерируй presigned URL и передай через EXPORTER_URL."
+  # защитимся от HTML-ответов
+  if head -n1 "${PY_SCRIPT}" | grep -qi '<!DOCTYPE html>'; then
+    rm -f "${PY_SCRIPT}"
+    die "MinIO вернул HTML (скорее всего 401/403). Сгенерируй presigned URL и передай через EXPORTER_URL."
+  fi
+
+  if [ -z "${EXPORTER_ARCHIVE_URL:-}" ]; then
+    die "Modular exporter requires proxmox_exporter package. Run from repo or set EXPORTER_ARCHIVE_URL to a tar.gz/zip."
+  fi
+
+  msg "Fetching exporter package…"
+  archive_path="${INSTALL_DIR}/exporter_package"
+  curl "${curl_args[@]}" "${EXPORTER_ARCHIVE_URL}" -o "${archive_path}" \
+    || die "Package download failed."
+
+  if file "${archive_path}" | grep -qi 'gzip'; then
+    tar -xzf "${archive_path}" -C "${INSTALL_DIR}"
+  elif file "${archive_path}" | grep -qi 'zip'; then
+    unzip -q "${archive_path}" -d "${INSTALL_DIR}"
+  else
+    die "Unsupported package format. Use .tar.gz or .zip."
+  fi
+
+  rm -f "${archive_path}"
 fi
 
 chmod +x "${PY_SCRIPT}"

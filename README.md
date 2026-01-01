@@ -60,7 +60,7 @@ apt install -y python3-pip
 pip3 install prometheus-client psutil
 
 # Optional but recommended
-apt install -y lm-sensors sysstat smartmontools nvme-cli
+apt install -y lm-sensors libsensors5 i2c-tools sysstat smartmontools nvme-cli
 
 # Auto-detect sensors
 sensors-detect --auto 2>/dev/null || true
@@ -110,14 +110,19 @@ apt install -y intel-gpu-tools
 # Create directory for the exporter
 mkdir -p /opt/proxmox-exporter
 
-# Copy the Python script to the server
+# Copy the Python script and module package to the server
 cat > /opt/proxmox-exporter/node_exporter.py << 'EOF'
 # [Paste the Python script here]
 EOF
 
+# Copy the proxmox_exporter/ directory alongside node_exporter.py
+# (it contains the modular exporter package)
+
 # Make it executable
 chmod +x /opt/proxmox-exporter/node_exporter.py
 ```
+
+> **Note:** The exporter is modular. Keep the `proxmox_exporter/` package directory alongside `node_exporter.py` when deploying.
 
 ### 3. Create Systemd Service
 ```bash
@@ -473,8 +478,11 @@ The exporter automatically detects available features and only collects relevant
 - `node_hwmon_temp_celsius` - Temperature readings
 - `node_hwmon_temp_max_celsius` - Maximum thresholds
 - `node_hwmon_temp_crit_celsius` - Critical thresholds
+- `node_hwmon_temp_alarm` - Temperature alarm states
 - `node_hwmon_fan_rpm` - Fan speeds
+- `node_hwmon_fan_min_rpm` - Minimum fan speeds
 - `node_hwmon_power_watt` - Power consumption
+- Parsing sources: psutil sensors APIs, `/sys/class/hwmon`, and `sensors -j` (JSON) with a `sensors -u` fallback for older lm-sensors versions.
 
 #### 🎮 GPU Metrics (if GPU detected)
 ##### NVIDIA GPUs:
