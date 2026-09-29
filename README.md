@@ -44,6 +44,22 @@ sudo bash install.sh
 curl -s http://localhost:9101/metrics | head
 ```
 
+Or straight from a checkout (works before the first release is published too):
+
+```sh
+apt install git
+git clone https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter.git
+cd proxmox-prometheus-exporter
+sudo ./install.sh --from-source
+```
+
+**No `pip` involved.** The exporter uses only the Python standard library, so
+it works on Proxmox VE 9 (Debian 13, Python 3.13), where `pip install` into
+the system Python is blocked by PEP 668 ("externally-managed-environment").
+You don't need `python3-prometheus-client`, `python3-psutil`, a virtualenv or
+`--break-system-packages` either. CI installs it on Debian 12 and 13 on every
+change.
+
 The installer:
 
 1. installs the few Debian packages that help (`smartmontools`, `lm-sensors`,
@@ -201,6 +217,7 @@ Things to know:
 
 | Symptom | Check |
 | --- | --- |
+| `pip3 install …` fails with `externally-managed-environment` | That was the 2.x instructions. 3.x needs no pip packages; use `install.sh` as shown above |
 | A collector shows `disabled` | `--list-collectors`; the tool or device it needs is missing, or the exporter is not root |
 | `proxmox_exporter_collector_success` is 0 | `journalctl -u proxmox-node-exporter` has the error; reproduce with `proxmox-node-exporter --once --collectors NAME --log.level debug` |
 | No temperatures | run `sensors-detect` and reboot, or load the driver (`coretemp`, `k10temp`, `nct6775`, `drivetemp`) |

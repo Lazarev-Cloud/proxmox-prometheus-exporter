@@ -45,11 +45,16 @@ advertises.
   Health" dashboard and an Ansible playbook.
 - **CI:** ruff, mypy `--strict`, shellcheck, actionlint, tests on Python
   3.9–3.13, promtool, a systemd-unit security score gate, a reproducible-build
-  check, and an end-to-end installer test on a real systemd host. CodeQL,
+  check, and end-to-end installer tests on a systemd host and on Debian 12
+  and 13 (the bases of Proxmox VE 8 and 9). CodeQL,
   Dependabot, and tag-driven releases with SLSA provenance.
 
 ### Fixed
 
+- Installing on Proxmox VE 9 (Debian 13, Python 3.13) failed: the 2.x
+  instructions and script ran `pip install`, which PEP 668 blocks there
+  ("externally-managed-environment", #2). The exporter now needs no
+  third-party packages at all, and CI installs it on Debian 12 and 13.
 - Most of the metrics documented in 2.x were declared but never collected:
   GPU, ZFS, guests, SMART, IPMI, UPS, Btrfs and CPU throttling.
 - `node_cpu_seconds_total` counted guest time twice (as `user` and `guest`),
