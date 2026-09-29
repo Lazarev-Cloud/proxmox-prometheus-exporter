@@ -63,12 +63,13 @@ src/proxmox_node_exporter/
    M = MetricGroup("example")
    TEMP = M.gauge("node_example_temperature_celsius", "Example temperature.", "sensor")
 
+
    class ExampleCollector(Collector):
        name = "example"
        description = "What it collects"
-       default_interval = 30.0          # optional; None = global --interval
+       default_interval = 30.0  # optional; None = global --interval
 
-       def detect(self) -> bool:        # cheap: does the host have it?
+       def detect(self) -> bool:  # cheap: does the host have it?
            return self.has_command("example-tool")
 
        def collect(self, out: Batch) -> None:

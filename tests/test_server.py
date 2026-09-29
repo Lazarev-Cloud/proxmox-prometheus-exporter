@@ -336,6 +336,10 @@ def _make_ca(directory: Path, name: str) -> tuple[Path, Path]:
     _openssl(
         "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes",
         "-keyout", key, "-out", crt, "-days", "2", "-subj", f"/CN={name}",
+        # Python 3.13 clients verify with VERIFY_X509_STRICT, which requires
+        # a proper CA profile (critical basicConstraints and keyUsage).
+        "-addext", "basicConstraints=critical,CA:TRUE",
+        "-addext", "keyUsage=critical,keyCertSign,cRLSign",
     )  # fmt: skip
     return crt, key
 
