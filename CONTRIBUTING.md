@@ -1,230 +1,111 @@
-# Contributing to Smart Adaptive Proxmox Node Exporter
+# Contributing
 
-We welcome contributions! This document provides guidelines for contributing to the project.
+Thanks for helping! Bug reports with real command output (e.g. an unusual
+`zpool status` or `smartctl --json` from your hardware) are especially
+valuable, because they become test fixtures.
 
-## 🚀 Quick Start for Contributors
+## Setup
 
-1. **Fork** the repository
-2. **Clone** your fork: `git clone https://github.com/yourusername/smart-proxmox-exporter.git`
-3. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-4. **Test** your changes on a Proxmox environment
-5. **Commit** with clear messages: `git commit -m "Add support for XYZ hardware"`
-6. **Push** to your branch: `git push origin feature/amazing-feature`
-7. **Open** a Pull Request
-
-## 🔧 Development Setup
-
-### Prerequisites
-- Python 3.7+
-- Proxmox VE test environment (or VM)
-- Basic understanding of Prometheus metrics
-
-### Local Development
-```bash
-# Clone the repository
-git clone https://github.com/lazarev-cloud/smart-proxmox-exporter.git
-cd smart-proxmox-exporter
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install prometheus-client psutil
-
-# Run the exporter
-python3 proxmox-node-exporter.py
+```sh
+git clone https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter.git
+cd proxmox-prometheus-exporter
+make dev          # .venv with the pinned, hash-checked tools
+make check        # what CI runs: format, lint, mypy --strict, shellcheck, actionlint, tests
 ```
 
-## 📝 Code Guidelines
+Try it on any Linux box without installing anything:
 
-### Python Code Style
-- Follow PEP 8
-- Use meaningful variable names
-- Add docstrings for all functions and classes
-- Handle exceptions gracefully
-- Log important events and errors
-
-### Example Function Structure
-```python
-def collect_new_hardware_metrics(self):
-    """Collect metrics from new hardware type
-    
-    This function detects and collects metrics from XYZ hardware.
-    It should handle cases where the hardware is not present.
-    """
-    if not self.features['new_hardware']:
-        return
-    
-    try:
-        with self.collection_duration.labels(collector='new_hardware').time():
-            # Collection logic here
-            pass
-    except Exception as e:
-        logger.error(f"Error collecting new hardware metrics: {e}")
-        self.collection_errors.labels(collector='new_hardware').inc()
+```sh
+PYTHONPATH=src python3 -m proxmox_node_exporter --list-collectors
+PYTHONPATH=src python3 -m proxmox_node_exporter --once --collectors system,zfs
 ```
 
-## 🎯 Contribution Areas
+On a Proxmox test node, `sudo ./install.sh --from-source` installs your
+working copy. `sudo bash tests/integration/installer.sh` runs the end-to-end
+installer test; it installs and removes the service, so only run it on a
+throw-away machine.
 
-### High Priority
-- **New Hardware Support**: GPU vendors, sensor types, storage systems
-- **Performance Optimizations**: Reduce collection time and memory usage
-- **Documentation**: Examples, troubleshooting, integration guides
-- **Testing**: Unit tests, integration tests
+## How it fits together
 
-### Hardware Support Requests
-We're actively looking for contributions to support:
-- Intel Arc GPUs
-- More IPMI sensor types
-- NVMe-specific metrics
-- Raspberry Pi GPIO sensors
-- Custom hardware sensors
-
-### Software Integration
-- Docker container metrics
-- Kubernetes cluster information
-- Additional hypervisor support
-- Cloud provider metadata
-
-## 🧪 Testing
-
-### Manual Testing
-1. Test on different Proxmox versions (6.x, 7.x, 8.x)
-2. Test with different hardware configurations
-3. Verify metrics accuracy with `curl http://localhost:9101/metrics`
-4. Check Grafana dashboard rendering
-
-### Test Checklist
-- [ ] Exporter starts without errors
-- [ ] Metrics endpoint responds (200 OK)
-- [ ] Feature detection works correctly
-- [ ] No memory leaks during long runs
-- [ ] Prometheus can scrape successfully
-- [ ] Grafana dashboard displays correctly
-
-## 📊 Adding New Metrics
-
-### Metric Naming Convention
-Follow Prometheus naming conventions:
-- Use `node_` prefix for node-level metrics
-- Use `pve_` prefix for Proxmox-specific metrics
-- Use descriptive names: `node_gpu_temperature_celsius`
-- Include units in metric names where applicable
-
-### Example: Adding New Hardware Support
-```python
-# 1. Add feature detection
-def _detect_features(self):
-    # ... existing code ...
-    
-    # Check for new hardware
-    if self._check_new_hardware():
-        self.features['new_hardware'] = True
-        logger.info("✓ New hardware detected")
-
-# 2. Initialize metrics
-def _init_new_hardware_metrics(self):
-    self.new_hardware_metric = Gauge(
-        'node_new_hardware_value',
-        'Description of the metric',
-        ['label1', 'label2'],
-        registry=self.registry
-    )
-
-# 3. Collect metrics
-def collect_new_hardware_metrics(self):
-    # Implementation here
-    pass
-
-# 4. Add to main collection loop
-def collect_all_metrics(self):
-    # ... existing collectors ...
-    
-    if self.features['new_hardware']:
-        self.collect_new_hardware_metrics()
+```
+src/proxmox_node_exporter/
+  cli.py          flags -> Settings, collector selection, main loop
+  manager.py      one thread per collector, snapshots, self-metrics
+  server.py       HTTP(S) endpoint: auth, TLS, limits
+  webconfig.py    TLS/basic-auth config, PBKDF2
+  runner.py       the only way to run a command (timeouts, fixed PATH, no shell)
+  metrics.py      metric declarations (MetricGroup), Batch, text format
+  collectors/     one module per collector
 ```
 
-## 🐛 Bug Reports
+- The **runtime uses only the standard library.** Please don't add
+  dependencies; the exporter runs as root on hypervisors, and a small supply
+  chain is part of the design.
+- **Every metric is declared up front** with `MetricGroup` (name, type, help,
+  labels). `Batch.add()` rejects mismatched labels, and the declarations
+  generate `docs/metrics.md`. Tests check that dashboards and alert rules only
+  use declared metrics.
+- **Collectors never run commands directly.** They call `self.run(...)`,
+  which goes through `Runner`: bare command names only, resolved from a fixed
+  PATH, no shell, a timeout on every call, and the process group is killed on
+  timeout. Validate any value that comes from the system (device names, UPS
+  names, …) before it goes into an argv.
+- **Failures:** `collect()` raises only when nothing useful could be
+  collected. Skip individual broken items (one disk, one sensor). A failed
+  run drops that collector's data and sets `proxmox_exporter_collector_success`
+  to 0.
 
-### Good Bug Report Template
-```markdown
-**Environment:**
-- Proxmox VE version: 
-- Python version: 
-- Hardware: 
-- OS: 
+## Adding a collector
 
-**Expected Behavior:**
-What should happen
+1. Create `src/proxmox_node_exporter/collectors/<name>.py`:
 
-**Actual Behavior:**
-What actually happens
+   ```python
+   M = MetricGroup("example")
+   TEMP = M.gauge("node_example_temperature_celsius", "Example temperature.", "sensor")
 
-**Steps to Reproduce:**
-1. Step one
-2. Step two
-3. ...
+   class ExampleCollector(Collector):
+       name = "example"
+       description = "What it collects"
+       default_interval = 30.0          # optional; None = global --interval
 
-**Logs:**
-```
-journalctl -u proxmox-node-exporter -n 100
-```
+       def detect(self) -> bool:        # cheap: does the host have it?
+           return self.has_command("example-tool")
 
-**Additional Context:**
-Any other relevant information
-```
+       def collect(self, out: Batch) -> None:
+           result = self.run("example-tool", "--json", timeout=10)
+           for item in json.loads(result.stdout):
+               out.add(TEMP, item["temp"], sensor=item["name"])
+   ```
 
-## 💡 Feature Requests
+2. Register it in `collectors/__init__.py`.
+3. Add `tests/test_collector_<name>.py`. Use real tool output as fixtures in
+   `tests/fixtures/<name>/`, `FakeRunner` for commands, and `make_ctx` +
+   `write_tree` for procfs/sysfs trees (see `tests/conftest.py`).
+4. Run `make docs` to regenerate `docs/metrics.md`. Add alerts and dashboard
+   panels if they make sense.
 
-### Good Feature Request Template
-```markdown
-**Is your feature request related to a problem?**
-A clear description of the problem.
+Metric naming follows the [Prometheus conventions](https://prometheus.io/docs/practices/naming/):
+base units (`_bytes`, `_seconds`, `_celsius`), `_total` for counters, and
+node_exporter's names where the same data exists there.
 
-**Describe the solution you'd like**
-What you want to happen.
+## Pull requests
 
-**Describe alternatives you've considered**
-Other solutions you've thought about.
+- Keep changes focused, and add or extend tests.
+- `make check` must pass. CI also runs the tests on Python 3.9–3.13, runs
+  promtool, builds and smoke-tests the release, and runs the installer
+  end-to-end.
+- Update `CHANGELOG.md` for anything users will notice.
 
-**Hardware/Software Details**
-- Hardware type: 
-- Available commands/APIs: 
-- Sample output: 
+## Releasing (maintainers)
 
-**Additional context**
-Screenshots, documentation links, etc.
-```
+1. Bump `__version__` in `src/proxmox_node_exporter/__init__.py` and move the
+   changelog entries under the new version.
+2. Merge, then `git tag -s vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`.
+3. The release workflow checks that the tag matches `__version__`. It builds
+   the zipapp, tarball and wheel, writes `SHA256SUMS`, creates signed build
+   provenance and publishes the GitHub release. Nodes with `--auto-update`
+   pick it up within a week.
 
-## 🎖️ Recognition
+## Code of conduct
 
-Contributors will be:
-- Mentioned in release notes
-- Added to the project's contributor list
-
-## 📜 Code of Conduct
-
-- Be respectful and inclusive
-- Focus on constructive feedback
-- Help newcomers learn
-- Maintain a welcoming environment
-
-## ❓ Questions?
-
-- Open a GitHub Discussion for general questions
-- Check existing issues and documentation first
-
-## 📋 Pull Request Checklist
-
-Before submitting a PR, ensure:
-- [ ] Code follows project style guidelines
-- [ ] All tests pass (or work on your system while no tests yet)
-- [ ] Documentation is updated
-- [ ] Commit messages are clear
-- [ ] No sensitive information is included
-- [ ] Feature detection works on systems without the hardware
-- [ ] Error handling is implemented
-- [ ] Logging is appropriate
-
-Thank you for contributing! 🚀
+Be kind and constructive; assume good intent.
