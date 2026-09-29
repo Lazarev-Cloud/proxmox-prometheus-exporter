@@ -19,7 +19,16 @@ metrics() { curl -fsS --max-time 5 http://127.0.0.1:9101/metrics; }
 no_failed_collectors() { ! metrics | grep -E '^proxmox_exporter_collector_success\{.*\} 0$'; }
 version() { /usr/local/sbin/proxmox-node-exporter --version | awk '{print $2}'; }
 healthy() { curl -fsS --max-time 5 http://127.0.0.1:9101/healthz >/dev/null; }
-serves_metrics() { metrics | grep -q '^node_load1 '; }
+# Not `metrics | grep -q`: grep would exit at the first match, and under
+# pipefail curl's failed write of the rest of a large page fails the check.
+has_metric() { local page; page="$(metrics)" && grep -q "^$1 " <<<"$page"; }
+# /healthz only says the collectors are running; the first results may lag.
+serves_metrics() {
+  local tries=10
+  until has_metric node_load1; do
+    tries=$((tries - 1)); [ "$tries" -gt 0 ] || return 1; sleep 1
+  done
+}
 hardened() { systemctl show "$SERVICE" -p ProtectSystem | grep -q full; }
 low_exposure() {
   systemd-analyze security "$SERVICE" --no-pager | tail -n1 | grep -Eq 'level for .*: [0-4]\.'
@@ -65,7 +74,7 @@ check "healthz after rollback" healthy
 
 step "re-running the installer is a no-op"
 check "reports up to date" bash -c \
-  "bash '$REPO_DIR/install.sh' --from-source --no-deps --yes | grep -q 'is up to date'"
+  "bash '$REPO_DIR/install.sh' --from-source --no-deps --yes | grep 'is up to date' >/dev/null"
 
 step "custom listen address and auto-update timer"
 sed -i 's/^ARGS=.*/ARGS="--web.listen-address=127.0.0.1:9101"/' /etc/default/$SERVICE
