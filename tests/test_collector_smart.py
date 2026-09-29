@@ -291,14 +291,48 @@ def test_one_failing_device_does_not_fail_the_collector(make_ctx: Callable[..., 
     samples = collect(SmartCollector(make_ctx(runner)))
     assert devices(samples, "node_disk_smart_standby") == {"sdb", "sdd", "bus/0[megaraid,0]"}
     assert devices(samples, "node_disk_smart_info") == {"sdb", "bus/0[megaraid,0]"}
+    # the unreadable disk is still visible, through its exit status
+    assert value(samples, "node_disk_smart_exit_status", device="sdc") == 2
 
 
 def test_every_device_failing_fails_the_collector(make_ctx: Callable[..., Context]) -> None:
     overrides: dict[tuple[str, str], Response] = {
         device: CommandError("smartctl: timed out after 30s") for device in DEVICES
     }
-    with pytest.raises(RuntimeError, match="every device"):
+    with pytest.raises(RuntimeError, match=r"every device \(/dev/sda: smartctl: timed out"):
         collect(SmartCollector(make_ctx(smart_runner(overrides=overrides))))
+
+
+def test_only_unreadable_disks_is_not_a_failure(make_ctx: Callable[..., Context]) -> None:
+    # Virtual disks (e.g. a nested or cloud VM) that smartctl cannot open.
+    runner = smart_runner(
+        scan="/dev/sda -d scsi # /dev/sda, SCSI device\n/dev/sdb -d scsi # /dev/sdb, SCSI device\n",
+        overrides={
+            ("scsi", "/dev/sda"): output(load("sde_open_failed.json")),
+            ("scsi", "/dev/sdb"): output(load("sde_open_failed.json")),
+        },
+    )
+    samples = collect(SmartCollector(make_ctx(runner)))
+    assert samples == {
+        "node_disk_smart_exit_status": {
+            frozenset({("device", "sda")}): 2.0,
+            frozenset({("device", "sdb")}): 2.0,
+        }
+    }
+
+
+def test_unreadable_disks_do_not_hide_a_broken_smartctl(
+    make_ctx: Callable[..., Context],
+) -> None:
+    runner = smart_runner(
+        scan="/dev/sda -d scsi # /dev/sda, SCSI device\n/dev/sdb -d sat # /dev/sdb [SAT]\n",
+        overrides={
+            ("scsi", "/dev/sda"): output(load("sde_open_failed.json")),
+            ("sat", "/dev/sdb"): CommandResult(1, "=======> UNRECOGNIZED OPTION: json\n", ""),
+        },
+    )
+    with pytest.raises(RuntimeError, match="/dev/sdb"):
+        collect(SmartCollector(make_ctx(runner)))
 
 
 def test_only_standby_disks_is_not_a_failure(make_ctx: Callable[..., Context]) -> None:

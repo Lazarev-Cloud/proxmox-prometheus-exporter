@@ -8,6 +8,8 @@ After=network-online.target pve-cluster.service
 
 [Service]
 Type=simple
+# MODE_ARGS is set by the drop-in that `install.sh --unprivileged` writes.
+Environment=MODE_ARGS=
 EnvironmentFile=-/etc/default/proxmox-node-exporter
 ExecStart=/usr/bin/python3 -I /opt/proxmox-node-exporter/proxmox-node-exporter.pyz $ARGS $MODE_ARGS
 Restart=on-failure

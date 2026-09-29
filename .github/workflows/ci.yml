@@ -187,4 +187,7 @@ jobs:
         run: docker exec installer-test bash /work/tests/integration/installer.sh
       - name: Service log
         if: failure()
-        run: docker exec installer-test journalctl -u proxmox-node-exporter --no-pager -n 100 || true
+        run: |
+          docker exec installer-test journalctl -u proxmox-node-exporter --no-pager -n 100 || true
+          docker exec installer-test sh -c 'smartctl --scan; smartctl --scan \
+            | while read -r dev _ kind _; do smartctl -a -n standby -d "$kind" "$dev"; echo "exit $?"; done' || true

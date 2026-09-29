@@ -26,7 +26,9 @@ advertises.
 - **SMART:** health, temperature, power-on hours, power cycles,
   reallocated/pending/uncorrectable sectors, CRC errors, SSD/NVMe wear, NVMe
   spare, critical warnings, media errors and bytes written; disks in standby
-  are not woken.
+  are not woken. Disks smartctl cannot open (virtual disks, unsupported USB
+  bridges) only report `node_disk_smart_exit_status` and do not fail the
+  collector.
 - **GPUs:** NVIDIA via `nvidia-smi`; AMD and Intel through DRM sysfs, with no
   vendor tools needed.
 - IPMI sensors, NUT UPS status, mdadm, Btrfs, bonds, TCP states, pressure

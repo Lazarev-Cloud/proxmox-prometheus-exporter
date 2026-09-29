@@ -75,7 +75,6 @@ _DEVICE_RE = re.compile(r"^/dev/[A-Za-z0-9/_.:-]+$")
 # e.g. "sat", "nvme", "megaraid,0", "areca,3/1", "hpt,1/1/2"
 _TYPE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_+-]*(,[A-Za-z0-9_+/-]+)*$")
 _ATA_ATTRS = {5: REALLOCATED, 197: PENDING, 198: UNCORRECTABLE, 10: SPIN_RETRY, 199: CRC_ERRORS}
-# ATA attributes whose normalised value is the remaining life in percent.
 # ATA attributes whose normalised value is the remaining life in percent. The
 # name is checked too: vendors reuse these IDs for other things (WD Blue's 233
 # is NAND_GB_Written, old HDDs' 202 is Data_Address_Mark_Errs).
@@ -114,15 +113,20 @@ class SmartCollector(Collector):
 
     def collect(self, out: Batch) -> None:
         devices = parse_scan(self.run("smartctl", "--scan").stdout)
-        failures = 0
+        read = 0
+        failures: list[str] = []
         for name, kind in devices:
             try:
-                self._device(out, device_label(name, kind), self._query(name, kind))
+                if self._device(out, device_label(name, kind), self._query(name, kind)):
+                    read += 1
             except (CommandError, ValueError, TypeError, AttributeError) as exc:
                 log.debug("smartctl %s: %s", name, exc)
-                failures += 1
-        if devices and failures == len(devices):
-            raise RuntimeError("smartctl failed for every device")
+                failures.append(f"{name}: {exc}")
+        # Disks smartctl cannot open (virtual disks, unsupported USB bridges,
+        # disks that vanished) are not failures of the collector; smartctl
+        # itself not working (timeouts, no JSON output) is.
+        if failures and not read:
+            raise RuntimeError(f"smartctl failed for every device ({failures[0]})")
 
     def _query(self, name: str, kind: str) -> dict[str, Any]:
         result = self.run(
@@ -133,18 +137,20 @@ class SmartCollector(Collector):
         data.setdefault("smartctl", {}).setdefault("exit_status", result.returncode)
         return data
 
-    def _device(self, out: Batch, device: str, data: dict[str, Any]) -> None:
+    def _device(self, out: Batch, device: str, data: dict[str, Any]) -> bool:
+        """Emits the metrics of one disk; False if smartctl could not read it."""
         status = int(data.get("smartctl", {}).get("exit_status") or 0)
         messages = " ".join(
             str(m.get("string", "")) for m in data.get("smartctl", {}).get("messages", [])
         )
         if "STANDBY" in messages.upper() or data.get("power_mode", {}).get("is_standby"):
             out.add(STANDBY, 1, device=device)
-            return
-        if status & 0b11:  # command line error or device could not be opened
-            raise ValueError(messages or f"exit status {status}")
-        out.add(STANDBY, 0, device=device)
+            return True
         out.add(EXIT_STATUS, status, device=device)
+        if status & 0b11:  # command line error or device could not be opened
+            log.debug("smartctl cannot read %s: %s", device, messages or f"exit status {status}")
+            return False
+        out.add(STANDBY, 0, device=device)
 
         model = str(
             data.get("model_name")
@@ -196,6 +202,7 @@ class SmartCollector(Collector):
                 if nvme.get(key) is not None:
                     out.add(spec, int(nvme[key]) * _NVME_DATA_UNIT, **labels)
         out.add(WEAROUT, _wearout(data, nvme, attrs), **labels)
+        return True
 
 
 def _raw(attr: dict[str, Any]) -> int | None:
