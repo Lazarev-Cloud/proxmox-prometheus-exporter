@@ -161,13 +161,14 @@ class _TokenBucket:
 class BasicAuth:
     """Checks ``Authorization: Basic`` headers against PBKDF2 hashes.
 
-    Verified headers are remembered (as SHA-256 digests) so that regular
-    scrapes do not pay the key-derivation cost. Checking credentials that are
-    not cached is rate limited per client address and overall, so failed
-    logins can neither burn the CPU nor lock out other clients.
+    The password that last verified for each configured user is remembered
+    and compared in constant time, so regular scrapes do not pay the
+    key-derivation cost (it is never stored as a fast hash). Checking
+    credentials that do not match it is rate limited per client address and
+    overall, so failed logins can neither burn the CPU nor lock out other
+    clients.
     """
 
-    _CACHE_SIZE = 64
     _MAX_CLIENTS = 1024
 
     def __init__(
@@ -177,7 +178,7 @@ class BasicAuth:
         total_attempts_per_second: float = 20.0,
     ) -> None:
         self._users = dict(users)
-        self._verified: OrderedDict[bytes, None] = OrderedDict()
+        self._verified: dict[str, bytes] = {}  # at most one entry per configured user
         self._lock = threading.Lock()
         self._rate = attempts_per_second
         self._clients: OrderedDict[str, _TokenBucket] = OrderedDict()
@@ -193,11 +194,6 @@ class BasicAuth:
         """True if authorised, False if not, None if rate limited."""
         if not header or not header.startswith("Basic "):
             return False
-        key = hashlib.sha256(header.encode("utf-8", errors="replace")).digest()
-        with self._lock:
-            if key in self._verified:
-                self._verified.move_to_end(key)
-                return True
         try:
             decoded = base64.b64decode(header[6:].strip(), validate=True).decode("utf-8")
         except (binascii.Error, UnicodeDecodeError, ValueError):  # ValueError: non-ASCII
@@ -205,6 +201,11 @@ class BasicAuth:
         user, sep, password = decoded.partition(":")
         if not sep:
             return False
+        secret = password.encode("utf-8")
+        with self._lock:
+            cached = self._verified.get(user)
+        if cached is not None and hmac.compare_digest(cached, secret):
+            return True
         with self._lock:
             if not self._take_token(client):
                 return None
@@ -215,9 +216,7 @@ class BasicAuth:
         if not verify_password(password, encoded):
             return False
         with self._lock:
-            self._verified[key] = None
-            while len(self._verified) > self._CACHE_SIZE:
-                self._verified.popitem(last=False)
+            self._verified[user] = secret
         return True
 
     def _take_token(self, client: str) -> bool:

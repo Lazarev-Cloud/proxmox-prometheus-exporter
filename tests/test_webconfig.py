@@ -425,16 +425,19 @@ def test_verified_headers_are_cached(verify_calls: list[tuple[str, str]]) -> Non
 
 
 @pytest.mark.usefixtures("fast_dummy")
-def test_cache_is_bounded(verify_calls: list[tuple[str, str]]) -> None:
-    users = {name: hash_password(name, iterations=FAST) for name in ("a", "b", "c")}
+def test_cache_holds_one_entry_per_configured_user(verify_calls: list[tuple[str, str]]) -> None:
+    users = {name: hash_password(name, iterations=FAST) for name in ("a", "b")}
     auth = BasicAuth(users, attempts_per_second=100.0)
-    auth._CACHE_SIZE = 2
-    for name in ("a", "b", "c"):
+    for name in ("a", "b", "a", "b"):
         assert auth.check(_basic(name, name)) is True
-    assert len(verify_calls) == 3
-    assert auth.check(_basic("c", "c")) is True  # still cached
-    assert len(verify_calls) == 3
-    assert auth.check(_basic("a", "a")) is True  # evicted, verified again
+    assert len(verify_calls) == 2
+    # Unknown users and wrong passwords are never cached.
+    assert auth.check(_basic("mallory", "x")) is False
+    assert auth.check(_basic("a", "not-a")) is False
+    assert set(auth._verified) == {"a", "b"}
+    # The cache holds the password itself (compared in constant time), not a fast hash.
+    assert auth._verified["a"] == b"a"
+    assert auth.check(_basic("a", "a")) is True
     assert len(verify_calls) == 4
 
 

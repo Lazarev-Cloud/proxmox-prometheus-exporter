@@ -389,6 +389,7 @@ def client_context(
     certs: Certs, client: str | None = None, maximum: ssl.TLSVersion | None = None
 ) -> ssl.SSLContext:
     ctx = ssl.create_default_context(cafile=str(certs["ca"][0]))
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     if client is not None:
         crt, key = certs[client]
         ctx.load_cert_chain(str(crt), str(key))

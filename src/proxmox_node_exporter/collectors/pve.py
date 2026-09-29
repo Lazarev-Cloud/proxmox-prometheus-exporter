@@ -126,6 +126,7 @@ class ApiSource:
         self._url = url.rstrip("/")
         self._auth = f"PVEAPIToken={token}"
         context = ssl.create_default_context(cafile=ca_file)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         # Python 3.13 turns on RFC 5280 strict mode, which rejects the Proxmox
         # cluster CA (it has no keyUsage extension). Chain, expiry and host
         # name are still verified.

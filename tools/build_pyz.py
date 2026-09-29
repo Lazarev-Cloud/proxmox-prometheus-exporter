@@ -43,7 +43,6 @@ def build(output: Path) -> Path:
             _add(archive, "__main__.py", MAIN)
             for path in sources:
                 _add(archive, path.relative_to(PACKAGE.parent).as_posix(), path.read_bytes())
-    os.chmod(tmp, 0o755)  # noqa: S103 - the zipapp is meant to be executable
     os.replace(tmp, output)
     return output
 
