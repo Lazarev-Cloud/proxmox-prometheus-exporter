@@ -1,0 +1,51 @@
+# Roll out proxmox-node-exporter to every Proxmox node.
+#
+#   ansible-playbook -i inventory.ini deploy/ansible/playbook.yml
+#   ansible-playbook -i inventory.ini deploy/ansible/playbook.yml -e pne_version=v3.0.1
+#
+# inventory.ini:
+#   [proxmox]
+#   pve1.example.com
+#   pve2.example.com
+#
+# The installer is downloaded from the release and checked against the
+# release's SHA256SUMS; it then verifies the release tarball the same way.
+- name: Deploy proxmox-node-exporter
+  hosts: "{{ pne_hosts | default('proxmox') }}"
+  become: true
+  serial: "{{ pne_serial | default(1) }}"   # one node at a time
+  vars:
+    pne_repo: Lazarev-Cloud/proxmox-prometheus-exporter
+    pne_version: latest                     # or a tag such as v3.0.0
+    pne_install_args: []                     # e.g. ["--listen=10.0.0.5:9101", "--auto-update"]
+    pne_release_url: >-
+      {{ 'https://github.com/' ~ pne_repo ~ '/releases/'
+         ~ ('latest/download' if pne_version == 'latest' else 'download/' ~ pne_version) }}
+    pne_port: 9101
+  tasks:
+    - name: Download the installer (checksum verified)
+      ansible.builtin.get_url:
+        url: "{{ pne_release_url }}/install.sh"
+        checksum: "sha256:{{ pne_release_url }}/SHA256SUMS"
+        dest: /root/proxmox-node-exporter-install.sh
+        mode: "0700"
+        force: true
+
+    - name: Install or upgrade
+      ansible.builtin.command:
+        argv: >-
+          {{ ['bash', '/root/proxmox-node-exporter-install.sh', '--yes']
+             + ([] if pne_version == 'latest' else ['--version', pne_version])
+             + pne_install_args }}
+      register: pne_install
+      changed_when: "'is up to date' not in pne_install.stdout"
+
+    - name: Wait for the exporter to be healthy
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ pne_port }}/healthz"
+        status_code: 200
+      register: pne_health
+      retries: 10
+      delay: 3
+      until: pne_health.status == 200
+      when: "'--web.config-file' not in (pne_install_args | join(' '))"

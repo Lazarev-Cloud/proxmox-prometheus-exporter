@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly update of proxmox-node-exporter
+Documentation=https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=12h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

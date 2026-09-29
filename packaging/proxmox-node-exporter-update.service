@@ -1,0 +1,11 @@
+[Unit]
+Description=Update proxmox-node-exporter to the latest release
+Documentation=https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Downloads the latest release, verifies its SHA-256, installs it and rolls
+# back automatically if the new version does not start.
+ExecStart=/bin/bash /opt/proxmox-node-exporter/install.sh --update --yes

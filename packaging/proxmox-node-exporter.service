@@ -1,0 +1,46 @@
+# Installed by install.sh; it is replaced on upgrade. Put local changes in a
+# drop-in instead:  systemctl edit proxmox-node-exporter
+[Unit]
+Description=Prometheus exporter for Proxmox VE hosts
+Documentation=https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter
+Wants=network-online.target
+After=network-online.target pve-cluster.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/proxmox-node-exporter
+ExecStart=/usr/bin/python3 -I /opt/proxmox-node-exporter/proxmox-node-exporter.pyz $ARGS $MODE_ARGS
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20s
+
+# Resource limits (the exporter itself needs ~30 MiB; pvesh briefly more).
+MemoryMax=512M
+TasksMax=128
+
+# Sandboxing. By default the service runs as root because pvesh, smartctl and
+# ipmitool require it; everything it does not need is taken away. See
+# docs/security.md for the unprivileged (API token) mode.
+NoNewPrivileges=yes
+UMask=0077
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectHostname=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+CapabilityBoundingSet=~CAP_AUDIT_CONTROL CAP_AUDIT_WRITE CAP_BLOCK_SUSPEND CAP_LEASE CAP_LINUX_IMMUTABLE CAP_MAC_ADMIN CAP_MAC_OVERRIDE CAP_MKNOD CAP_NET_ADMIN CAP_NET_RAW CAP_SETFCAP CAP_SYS_BOOT CAP_SYS_MODULE CAP_SYS_PACCT CAP_SYS_TIME CAP_SYS_TTY_CONFIG CAP_SYSLOG CAP_WAKE_ALARM
+
+[Install]
+WantedBy=multi-user.target
