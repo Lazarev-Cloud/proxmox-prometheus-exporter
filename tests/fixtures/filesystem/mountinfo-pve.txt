@@ -1,0 +1,34 @@
+22 28 0:21 / /sys rw,nosuid,nodev,noexec,relatime shared:7 - sysfs sysfs rw
+23 28 0:22 / /proc rw,relatime shared:12 - proc proc rw
+24 28 0:5 / /dev rw,nosuid,relatime shared:2 - devtmpfs udev rw,size=32838012k,nr_inodes=8209503,mode=755,inode64
+25 24 0:23 / /dev/pts rw,nosuid,noexec,relatime shared:3 - devpts devpts rw,gid=5,mode=620,ptmxmode=000
+26 28 0:24 / /run rw,nosuid,nodev,noexec,relatime shared:5 - tmpfs tmpfs rw,size=6574952k,mode=755,inode64
+28 1 0:26 / / rw,relatime shared:1 - zfs rpool/ROOT/pve-1 rw,xattr,noacl,casesensitive
+29 22 0:6 / /sys/kernel/security rw,nosuid,nodev,noexec,relatime shared:8 - securityfs securityfs rw
+30 24 0:27 / /dev/shm rw,nosuid,nodev,inode64 shared:4 - tmpfs tmpfs rw,inode64
+31 26 0:28 / /run/lock rw,nosuid,nodev,noexec,relatime shared:6 - tmpfs tmpfs rw,size=5120k,inode64
+32 22 0:29 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime shared:9 - cgroup2 cgroup2 rw,nsdelegate,memory_recursiveprot
+33 22 0:30 / /sys/fs/pstore rw,nosuid,nodev,noexec,relatime shared:10 - pstore pstore rw
+34 22 0:31 / /sys/firmware/efi/efivars rw,nosuid,nodev,noexec,relatime shared:11 - efivarfs efivarfs rw
+35 22 0:32 / /sys/fs/bpf rw,nosuid,nodev,noexec,relatime shared:13 - bpf bpf rw,mode=700
+36 23 0:33 / /proc/sys/fs/binfmt_misc rw,relatime shared:14 - autofs systemd-1 rw,fd=30,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=17672
+37 24 0:34 / /dev/hugepages rw,relatime shared:15 - hugetlbfs hugetlbfs rw,pagesize=2M
+38 24 0:20 / /dev/mqueue rw,nosuid,nodev,noexec,relatime shared:16 - mqueue mqueue rw
+39 22 0:7 / /sys/kernel/debug rw,nosuid,nodev,noexec,relatime shared:17 - debugfs debugfs rw
+40 22 0:12 / /sys/kernel/tracing rw,nosuid,nodev,noexec,relatime shared:18 - tracefs tracefs rw
+41 22 0:35 / /sys/fs/fuse/connections rw,nosuid,nodev,noexec,relatime shared:19 - fusectl fusectl rw
+42 22 0:36 / /sys/kernel/config rw,nosuid,nodev,noexec,relatime shared:20 - configfs configfs rw
+61 26 0:38 / /run/credentials/systemd-sysctl.service ro,nosuid,nodev,noexec,relatime shared:21 - tmpfs none rw,size=1024k,nr_inodes=1024,mode=700,inode64,noswap
+64 28 0:40 / /rpool rw,noatime shared:33 - zfs rpool rw,xattr,noacl,casesensitive
+65 64 0:41 / /rpool/data rw,noatime shared:34 - zfs rpool/data rw,xattr,noacl,casesensitive
+66 28 8:2 / /boot/efi rw,relatime shared:35 - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+68 28 0:44 / /var/lib/lxcfs rw,nosuid,nodev,relatime shared:37 - fuse.lxcfs lxcfs rw,user_id=0,group_id=0,allow_other
+70 36 0:45 / /proc/sys/fs/binfmt_misc rw,nosuid,nodev,noexec,relatime shared:39 - binfmt_misc binfmt_misc rw
+72 28 0:47 / /etc/pve rw,nosuid,nodev,relatime shared:41 - fuse /dev/fuse rw,user_id=0,group_id=0,default_permissions,allow_other
+74 28 0:48 / /mnt/pve/nas\040backup rw,relatime shared:43 - nfs4 192.168.1.10:/export/pve\040backup rw,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.20,local_lock=none,addr=192.168.1.10
+75 28 8:17 / /mnt/usb ro,nosuid,nodev,relatime - ext4 /dev/sdb1 ro
+76 26 0:50 / /run/user/0 rw,nosuid,nodev,relatime shared:500 - tmpfs tmpfs rw,size=6574948k,nr_inodes=1643737,mode=700,inode64
+80 28 8:33 / /mnt/data rw,relatime shared:44 - ext4 /dev/sdc1 rw
+81 80 0:53 / /mnt/data rw,noatime shared:45 master:44 - zfs tank/data rw,xattr,noacl
+90 28 252:0 / /var/lib/kubelet/pods/0a1b2c3d/volumes/kubernetes.io~csi/pvc-1/mount rw,relatime shared:60 - ext4 /dev/rbd0 rw,stripe=16
+91 28 0:56 / /mnt/pve/cifs rw,relatime shared:61 - cifs //nas/My\040Share rw,vers=3.1.1,cache=strict,username=backup,uid=0,noforceuid,gid=0,noforcegid,addr=192.168.1.10,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,rsize=4194304,wsize=4194304,bsize=1048576,echo_interval=60,actimeo=1,closetimeo=1

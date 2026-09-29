@@ -1,0 +1,18 @@
+581 470 253:1 / / rw,relatime master:1 - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+582 581 0:5 / /dev rw,nosuid,relatime master:2 - devtmpfs udev rw,size=32838012k,nr_inodes=8209503,mode=755,inode64
+583 582 0:23 / /dev/pts rw,nosuid,noexec,relatime master:3 - devpts devpts rw,gid=5,mode=620,ptmxmode=000
+590 581 0:22 / /proc rw,nosuid,nodev,noexec,relatime master:12 - proc proc rw
+591 581 0:21 / /sys ro,nosuid,nodev,noexec,relatime master:7 - sysfs sysfs rw
+600 581 0:24 / /run rw,nosuid,nodev,noexec,relatime master:5 - tmpfs tmpfs rw,size=6574952k,mode=755,inode64
+610 581 8:2 / /boot/efi ro,relatime master:25 - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+611 581 8:33 / /home ro,relatime master:26 - ext4 /dev/sdc1 rw
+612 581 8:49 / /mnt/backup rw,relatime master:27 - xfs /dev/sdd1 rw,attr2,inode64,logbufs=8,logbsize=32k,noquota
+613 581 253:1 /tmp/systemd-private-6f1c2d3e4b5a4c7d8e9f0a1b2c3d4e5f-proxmox-node-exporter.service-AbCdEf/tmp /tmp rw,relatime - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+614 581 253:1 /var/tmp/systemd-private-6f1c2d3e4b5a4c7d8e9f0a1b2c3d4e5f-proxmox-node-exporter.service-GhIjKl/tmp /var/tmp rw,relatime - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+615 581 253:1 /usr /usr ro,relatime master:1 - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+616 581 253:1 /boot /boot ro,relatime master:1 - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+617 616 8:2 / /boot/efi ro,relatime master:25 - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+618 581 253:1 /etc /etc ro,relatime master:1 - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+619 618 0:47 / /etc/pve ro,nosuid,nodev,relatime master:41 - fuse /dev/fuse rw,user_id=0,group_id=0,default_permissions,allow_other
+620 581 253:1 /root /root ro,relatime master:1 - ext4 /dev/mapper/pve-root rw,errors=remount-ro
+621 600 0:50 / /run/user ro,nosuid,nodev,relatime - tmpfs tmpfs rw,size=4k,mode=755,inode64
