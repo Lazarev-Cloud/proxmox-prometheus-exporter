@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do **not** report security vulnerabilities here; see SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Exporter version
+      description: Output of `proxmox-node-exporter --version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Proxmox VE version (`pveversion`), Python version, relevant hardware
+      placeholder: "pve-manager/8.2.4, Python 3.11, 2x NVMe (ZFS mirror), NVIDIA T400"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: collectors
+    attributes:
+      label: Collector status
+      description: Output of `proxmox-node-exporter --list-collectors`
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`journalctl -u proxmox-node-exporter -n 100 --no-pager` (remove anything sensitive)"
+      render: text

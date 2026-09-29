@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:v3.15.0
+
+jobs:
+  lint:
+    name: Lint, types, generated files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install pinned dev dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+      - run: ruff format --check .
+      - run: ruff check .
+      - run: mypy
+      - name: ShellCheck
+        run: shellcheck install.sh tests/integration/installer.sh
+      - name: actionlint
+        run: actionlint
+      - name: Generated docs and dashboards are up to date
+        run: |
+          python tools/gen_metrics_doc.py --check
+          python tools/gen_health_dashboard.py --check
+
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9: Proxmox VE 7 (Debian 11), 3.11: PVE 8 (Debian 12), 3.13: PVE 9 (Debian 13)
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install pinned dev dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+      - name: pytest
+        run: pytest --cov --cov-report=term --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: matrix.python == '3.13'
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 14
+
+  rules:
+    name: Prometheus rules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: promtool check rules / test rules
+        run: |
+          docker run --rm -v "$PWD/prometheus:/rules:ro" -w /rules --entrypoint promtool \
+            "$PROMETHEUS_IMAGE" check rules alerts.yml
+          docker run --rm -v "$PWD/prometheus:/rules:ro" -w /rules --entrypoint promtool \
+            "$PROMETHEUS_IMAGE" test rules alerts_test.yml
+
+  build:
+    name: Build and smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Build release artefacts
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m build --sdist --wheel --outdir dist/
+          cp install.sh dist/
+          python tools/build_dist.py
+          cat dist/SHA256SUMS
+      - name: The zipapp is reproducible
+        run: |
+          python tools/build_pyz.py /tmp/rebuild.pyz
+          cmp dist/proxmox-node-exporter.pyz /tmp/rebuild.pyz
+      - name: Smoke test with the system Python, isolated mode
+        run: |
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --version
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --list-collectors
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --once > /tmp/once.prom
+          python -c "
+          from prometheus_client.parser import text_string_to_metric_families as parse
+          families = list(parse(open('/tmp/once.prom').read()))
+          print(len(families), 'metric families parse cleanly')
+          assert len(families) > 50
+          "
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --web.listen-address=127.0.0.1:9101 &
+          pid=$!
+          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:9101/healthz && break; sleep 0.5; done
+          curl -fsS --compressed http://127.0.0.1:9101/metrics | grep -q '^node_load1 '
+          kill "$pid"
+      - name: systemd units are valid and hardened
+        run: |
+          systemd-analyze verify packaging/proxmox-node-exporter.service \
+            packaging/proxmox-node-exporter-update.service packaging/proxmox-node-exporter-update.timer
+          systemd-analyze security --offline=true --threshold=50 --no-pager \
+            packaging/proxmox-node-exporter.service
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 14
+
+  installer:
+    name: Installer end-to-end (systemd)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install, upgrade with rollback, uninstall
+        run: sudo bash tests/integration/installer.sh

@@ -1,0 +1,21 @@
+name: Feature request
+description: A new metric, collector or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Metric names, labels, where the data comes from (command, sysfs/procfs path, API endpoint)
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample output of the data source
+      description: Real output of the command or file this would be built from (redact serial numbers and hostnames if needed)
+      render: text
