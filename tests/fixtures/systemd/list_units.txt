@@ -1,0 +1,24 @@
+proc-sys-fs-binfmt_misc.automount                                       loaded    active     waiting         Arbitrary Executable File Formats File System Automount Point
+dev-disk-by\x2did-ata\x2dSamsung_SSD_870_EVO_1TB_S6PTNM0T712345A.device loaded    active     plugged         Samsung_SSD_870_EVO_1TB 3
+-.mount                                                                 loaded    active     mounted         Root Mount
+session-12.scope                                                        loaded    active     running         Session 12 of User root
+chrony.service                                                          loaded    active     running         chrony, an NTP client/server
+corosync.service                                                        loaded    active     running         Corosync Cluster Engine
+getty@tty1.service                                                      loaded    active     running         Getty on tty1
+iscsid.service                                                          masked    inactive   dead            iscsid.service
+nfs-server.service                                                      not-found inactive   dead            nfs-server.service
+postfix@-.service                                                       loaded    active     running         Postfix Mail Transport Agent (instance -)
+pve-cluster.service                                                     loaded    active     running         The Proxmox VE cluster filesystem
+pve-guests.service                                                      loaded    active     exited          PVE guests
+pvescheduler.service                                                    loaded    activating start-pre start Proxmox VE scheduler
+pvestatd.service                                                        loaded    active     running         PVE Status Daemon
+systemd-fsck@dev-disk-by\x2duuid-4A1B\x2d2C3D.service                   loaded    active     exited          File System Check on /dev/disk/by-uuid/4A1B-2C3D
+user@0.service                                                          loaded    active     running         User Manager for UID 0
+zfs-import@tank.service                                                 loaded    failed     failed          Import ZFS pool tank
+zfs-zed.service                                                         loaded    inactive   dead            ZFS Event Daemon (zed)
+system-getty.slice                                                      loaded    active     active          Slice /system/getty
+dm-event.socket                                                         loaded    active     listening       Device-mapper event daemon FIFOs
+ssh.socket                                                              loaded    inactive   dead            OpenBSD Secure Shell server socket
+ceph.target                                                             loaded    inactive   dead            ceph target allowing to start/stop all ceph*@.service instances at once
+pve-daily-update.timer                                                  loaded    active     waiting         Daily PVE download activities
+systemd-tmpfiles-clean.timer                                            loaded    failed     failed          Daily Cleanup of Temporary Directories

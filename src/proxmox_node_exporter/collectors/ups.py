@@ -33,7 +33,8 @@ LOW_BATTERY = M.gauge("node_ups_low_battery", "UPS reports low battery (LB).", "
 REPLACE_BATTERY = M.gauge("node_ups_replace_battery", "UPS asks for a new battery (RB).", "ups")
 ONLINE = M.gauge("node_ups_online", "UPS is on line power (OL).", "ups")
 
-_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+(@[A-Za-z0-9_.:\[\]-]+)?$")
+# UPS names never start with "-", so they cannot be mistaken for upsc options.
+_NAME_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*(@[A-Za-z0-9_.:\[\]-]+)?")
 
 
 def parse_upsc(text: str) -> dict[str, str]:
@@ -63,7 +64,7 @@ class UpsCollector(Collector):
             names = list(self.settings.ups_targets)
         else:
             names = self.run("upsc", "-l", "localhost").stdout.split()
-        return [n for n in names if _NAME_RE.match(n)]
+        return [n for n in names if _NAME_RE.fullmatch(n)]
 
     def collect(self, out: Batch) -> None:
         targets = self.targets()
@@ -75,7 +76,8 @@ class UpsCollector(Collector):
                 log.debug("upsc %s: %s", target, exc)
                 failures += 1
                 continue
-            ups = target.split("@", 1)[0]
+            # Keep "@host" so equally named UPSes on different servers stay apart.
+            ups = target.removesuffix("@localhost")
             out.add(
                 INFO,
                 1,

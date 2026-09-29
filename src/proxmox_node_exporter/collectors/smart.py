@@ -72,10 +72,19 @@ WRITTEN_BYTES = M.counter("node_disk_smart_written_bytes_total", "NVMe host byte
 ERROR_LOG = M.gauge("node_disk_smart_error_log_entries", "Entries in the device error log.", *_D)
 
 _DEVICE_RE = re.compile(r"^/dev/[A-Za-z0-9/_.:-]+$")
-_TYPE_RE = re.compile(r"^[A-Za-z0-9_+-]+(,[A-Za-z0-9_+-]+)*$")
+# e.g. "sat", "nvme", "megaraid,0", "areca,3/1", "hpt,1/1/2"
+_TYPE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_+-]*(,[A-Za-z0-9_+/-]+)*$")
 _ATA_ATTRS = {5: REALLOCATED, 197: PENDING, 198: UNCORRECTABLE, 10: SPIN_RETRY, 199: CRC_ERRORS}
 # ATA attributes whose normalised value is the remaining life in percent.
-_ATA_LIFE_ATTRS = (231, 233, 177, 202)
+# ATA attributes whose normalised value is the remaining life in percent. The
+# name is checked too: vendors reuse these IDs for other things (WD Blue's 233
+# is NAND_GB_Written, old HDDs' 202 is Data_Address_Mark_Errs).
+_ATA_LIFE_ATTRS = {
+    231: "SSD_Life_Left",
+    233: "Media_Wearout_Indicator",
+    177: "Wear_Leveling_Count",
+    202: "Percent_Lifetime_Remain",
+}
 _NVME_DATA_UNIT = 512_000
 
 
@@ -204,7 +213,11 @@ def _wearout(data: dict[str, Any], nvme: dict[str, Any], attrs: dict[Any, Any]) 
         return float(used)
     if nvme.get("percentage_used") is not None:
         return float(nvme["percentage_used"])
-    for attr_id in _ATA_LIFE_ATTRS:
-        if attr_id in attrs and attrs[attr_id].get("value") is not None:
-            return float(max(0, 100 - int(attrs[attr_id]["value"])))
+    sas = data.get("scsi_percentage_used_endurance_indicator")
+    if sas is not None:
+        return float(sas)
+    for attr_id, name in _ATA_LIFE_ATTRS.items():
+        attr = attrs.get(attr_id)
+        if attr and attr.get("name") == name and attr.get("value") is not None:
+            return float(max(0, 100 - int(attr["value"])))
     return None

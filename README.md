@@ -212,7 +212,7 @@ Things to know:
 
 ```sh
 make dev      # .venv with the pinned, hash-checked tools
-make check    # ruff, mypy --strict, shellcheck, actionlint, 550+ tests, generated files
+make check    # ruff, mypy --strict, shellcheck, actionlint, 670+ tests, generated files
 make dist     # reproducible zipapp, tarball, wheel, SHA256SUMS
 ```
 

@@ -1,0 +1,125 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      3
+    ],
+    "svn_revision": "5338",
+    "platform_info": "x86_64-linux-6.8.12-2-pve",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--json",
+      "-a",
+      "-n",
+      "standby",
+      "-d",
+      "nvme",
+      "/dev/nvme0"
+    ],
+    "exit_status": 0
+  },
+  "local_time": {
+    "time_t": 1727600000,
+    "asctime": "Sun Sep 29 10:53:20 2024 CEST"
+  },
+  "device": {
+    "name": "/dev/nvme0",
+    "info_name": "/dev/nvme0",
+    "type": "nvme",
+    "protocol": "NVMe"
+  },
+  "model_name": "Samsung SSD 980 PRO 2TB",
+  "serial_number": "S6B0NG0R123456X",
+  "firmware_version": "5B2QGXA7",
+  "nvme_pci_vendor": {
+    "id": 5197,
+    "subsystem_id": 5197
+  },
+  "nvme_ieee_oui_identifier": 9528,
+  "nvme_total_capacity": 2000398934016,
+  "nvme_unallocated_capacity": 0,
+  "nvme_controller_id": 6,
+  "nvme_version": {
+    "string": "1.3",
+    "value": 66304
+  },
+  "nvme_number_of_namespaces": 1,
+  "nvme_namespaces": [
+    {
+      "id": 1,
+      "size": {
+        "blocks": 3907029168,
+        "bytes": 2000398934016
+      },
+      "capacity": {
+        "blocks": 3907029168,
+        "bytes": 2000398934016
+      },
+      "utilization": {
+        "blocks": 1250123456,
+        "bytes": 640063209472
+      },
+      "formatted_lba_size": 512,
+      "eui64": {
+        "oui": 9528,
+        "ext_id": 432109876543
+      }
+    }
+  ],
+  "user_capacity": {
+    "blocks": 3907029168,
+    "bytes": 2000398934016
+  },
+  "logical_block_size": 512,
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "smart_status": {
+    "passed": true,
+    "nvme": {
+      "value": 0
+    }
+  },
+  "nvme_smart_health_information_log": {
+    "critical_warning": 0,
+    "temperature": 41,
+    "available_spare": 100,
+    "available_spare_threshold": 10,
+    "percentage_used": 3,
+    "data_units_read": 23456789,
+    "data_units_written": 34567890,
+    "host_reads": 345678901,
+    "host_writes": 456789012,
+    "controller_busy_time": 1234,
+    "power_cycles": 120,
+    "power_on_hours": 5678,
+    "unsafe_shutdowns": 45,
+    "media_errors": 0,
+    "num_err_log_entries": 12,
+    "warning_temp_time": 0,
+    "critical_comp_time": 0,
+    "temperature_sensors": [
+      41,
+      50
+    ]
+  },
+  "temperature": {
+    "current": 41
+  },
+  "power_cycle_count": 120,
+  "power_on_time": {
+    "hours": 5678
+  },
+  "nvme_error_information_log": {
+    "size": 64,
+    "read": 16,
+    "unread": 0,
+    "table": []
+  }
+}

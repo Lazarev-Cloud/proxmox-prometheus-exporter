@@ -1,0 +1,51 @@
+battery.charge: 100
+battery.charge.low: 10
+battery.charge.warning: 50
+battery.date: not set
+battery.mfr.date: 2019/05/28
+battery.runtime: 1380
+battery.runtime.low: 120
+battery.type: PbAc
+battery.voltage: 27.3
+battery.voltage.nominal: 24.0
+device.mfr: American Power Conversion
+device.model: Back-UPS RS 1500G
+device.serial: 4B1923P12345
+device.type: ups
+driver.name: usbhid-ups
+driver.parameter.bus: 001
+driver.parameter.pollfreq: 30
+driver.parameter.pollinterval: 15
+driver.parameter.port: auto
+driver.parameter.product: Back-UPS RS 1500G FW:865.L7 .D USB FW:L7
+driver.parameter.productid: 0002
+driver.parameter.serial: 4B1923P12345
+driver.parameter.synchronous: auto
+driver.parameter.vendor: American Power Conversion
+driver.parameter.vendorid: 051D
+driver.version: 2.8.0
+driver.version.data: APC HID 0.98
+driver.version.internal: 0.47
+driver.version.usb: libusb-1.0.26 (API: 0x1000109)
+input.sensitivity: medium
+input.transfer.high: 144
+input.transfer.low: 88
+input.transfer.reason: input voltage out of range
+input.voltage: 121.0
+input.voltage.nominal: 120
+ups.beeper.status: enabled
+ups.delay.shutdown: 20
+ups.firmware: 865.L7 .D
+ups.firmware.aux: L7
+ups.load: 22
+ups.mfr: American Power Conversion
+ups.mfr.date: 2019/05/28
+ups.model: Back-UPS RS 1500G
+ups.productid: 0002
+ups.realpower.nominal: 865
+ups.serial: 4B1923P12345
+ups.status: OL CHRG
+ups.test.result: No test initiated
+ups.timer.reboot: 0
+ups.timer.shutdown: -1
+ups.vendorid: 051d

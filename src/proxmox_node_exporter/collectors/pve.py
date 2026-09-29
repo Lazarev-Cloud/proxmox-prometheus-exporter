@@ -126,6 +126,10 @@ class ApiSource:
         self._url = url.rstrip("/")
         self._auth = f"PVEAPIToken={token}"
         context = ssl.create_default_context(cafile=ca_file)
+        # Python 3.13 turns on RFC 5280 strict mode, which rejects the Proxmox
+        # cluster CA (it has no keyUsage extension). Chain, expiry and host
+        # name are still verified.
+        context.verify_flags &= ~ssl.VERIFY_X509_STRICT
         if insecure:
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
@@ -313,7 +317,8 @@ class PveCollector(Collector):
             if kind not in ("qemu", "lxc") or res.get("vmid") is None:
                 continue
             status = str(res.get("status") or "unknown")
-            counts[(kind, status)] = counts.get((kind, status), 0) + 1
+            if not res.get("template"):  # templates are not guests that can run
+                counts[(kind, status)] = counts.get((kind, status), 0) + 1
             labels = {
                 "vmid": str(res["vmid"]),
                 "name": str(res.get("name") or ""),

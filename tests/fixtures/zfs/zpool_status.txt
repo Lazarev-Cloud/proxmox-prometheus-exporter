@@ -1,0 +1,86 @@
+  pool: rpool
+ state: ONLINE
+status: Some supported and requested features are not enabled on the pool.
+	The pool can still be used, but some features are unavailable.
+action: Enable all features using 'zpool upgrade'. Once this is done,
+	the pool may no longer be accessible by software that does not support
+	the features. See zpool-features(7) for details.
+  scan: scrub repaired 0B in 00:01:23 with 0 errors on Sun Sep  8 00:25:24 2024
+config:
+
+	NAME                                                   STATE     READ WRITE CKSUM
+	rpool                                                  ONLINE       0     0     0
+	  mirror-0                                             ONLINE       0     0     0
+	    ata-Samsung_SSD_870_EVO_1TB_S6PTNM0T712345A-part3  ONLINE       0     0     0
+	    ata-Samsung_SSD_870_EVO_1TB_S6PTNM0T712346B-part3  ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: tank
+ state: DEGRADED
+status: One or more devices could not be opened.  Sufficient replicas exist for
+	the pool to continue functioning in a degraded state.
+action: Attach the missing device and online it using 'zpool online'.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-2Q
+  scan: scrub in progress since Sun Sep 29 02:00:01 2024
+	7.12T / 10.9T scanned at 1.21G/s, 5.03T / 10.9T issued at 874M/s
+	0B repaired, 46.15% done, 01:57:12 to go
+config:
+
+	NAME                        STATE     READ WRITE CKSUM
+	tank                        DEGRADED     0     0     0
+	  raidz2-0                  DEGRADED     0     0     0
+	    wwn-0x5000c500d1a2b3c4  ONLINE       0     0     0
+	    wwn-0x5000c500d1a2b3c5  FAULTED     14   312     0  too many errors
+	    wwn-0x5000c500d1a2b3c6  ONLINE       0     0     7
+	    6135942587126573451     UNAVAIL      0     0     0  was /dev/disk/by-id/wwn-0x5000c500d1a2b3c7-part1
+	    wwn-0x5000c500d1a2b3c8  ONLINE       3     0     0
+	    wwn-0x5000c500d1a2b3c9  ONLINE       0     0     0
+
+errors: 3 data errors, use '-v' for a list
+
+  pool: backup
+ state: DEGRADED
+status: One or more devices is currently being resilvered.  The pool will
+	continue to function, possibly in a degraded state.
+action: Wait for the resilver to complete.
+  scan: resilver in progress since Sat Sep 28 22:14:05 2024
+	2.31T / 3.62T scanned at 612M/s, 1.98T / 3.62T issued at 525M/s
+	1.01T resilvered, 54.62% done, 00:54:31 to go
+config:
+
+	NAME                                            STATE     READ WRITE CKSUM
+	backup                                          DEGRADED     0     0     0
+	  mirror-0                                      DEGRADED     0     0     0
+	    replacing-0                                 DEGRADED     0     0     0
+	      ata-WDC_WD40EFRX-68N32N0_WD-WCC7K1234567  OFFLINE      0     0     0
+	      ata-WDC_WD40EFPX-68C6CN0_WD-WX12D34E5678  ONLINE       0     0     0  (resilvering)
+	    ata-WDC_WD40EFRX-68N32N0_WD-WCC7K7654321    ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: fast
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME           STATE     READ WRITE CKSUM
+	fast           ONLINE       0     0     0
+	  mirror-0     ONLINE       0     0     0
+	    sda        ONLINE       0     0     0
+	    sdb        ONLINE       0     0     0
+	  mirror-1     ONLINE       0     0     0
+	    sdc        ONLINE       0     0     0
+	    sdd        ONLINE       0     0     0
+	logs	
+	  mirror-2     ONLINE       0     0     0
+	    nvme0n1p1  ONLINE       0     0     0
+	    nvme1n1p1  ONLINE       0     0     0
+	cache
+	  nvme0n1p2    ONLINE       0     0     0
+	  nvme1n1p2    ONLINE       0     0     0
+	spares
+	  sde          AVAIL   
+	  sdf          AVAIL   
+
+errors: No known data errors

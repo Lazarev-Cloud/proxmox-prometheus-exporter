@@ -1,0 +1,14 @@
+[
+ {
+  "id": "7c9e8d6f5a4b",
+  "name": "proxy",
+  "cpu_time": "12.345678s",
+  "cpu_percent": "0.08%",
+  "avg_cpu": "0.05%",
+  "mem_usage": "24.87MB / 16.66GB",
+  "mem_percent": "0.15%",
+  "net_io": "1.234MB / 5.678MB",
+  "block_io": "8.192kB / 0B",
+  "pids": "8"
+ }
+]

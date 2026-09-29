@@ -1,0 +1,67 @@
+[
+ {
+  "AutoRemove": false,
+  "Command": [
+   "caddy",
+   "run",
+   "--config",
+   "/etc/caddy/Caddyfile"
+  ],
+  "CreatedAt": "3 weeks ago",
+  "Exited": false,
+  "ExitedAt": -62135596800,
+  "ExitCode": 0,
+  "Id": "7c9e8d6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d",
+  "Image": "docker.io/library/caddy:2",
+  "ImageID": "8c0e2f4a6b8d0f2a4c6e8a0b2d4f6a8c0e2f4a6b8d0f2a4c6e8a0b2d4f6a8c0e",
+  "IsInfra": false,
+  "Labels": null,
+  "Mounts": [],
+  "Names": [
+   "proxy"
+  ],
+  "Namespaces": {},
+  "Networks": [],
+  "Pid": 4312,
+  "Pod": "",
+  "PodName": "",
+  "Ports": null,
+  "Size": null,
+  "StartedAt": 1725612345,
+  "State": "running",
+  "Status": "Up 3 weeks",
+  "Created": 1725612300
+ },
+ {
+  "AutoRemove": false,
+  "Command": [
+   "/entrypoint.sh"
+  ],
+  "CreatedAt": "2 weeks ago",
+  "Exited": true,
+  "ExitedAt": 1727100000,
+  "ExitCode": 1,
+  "Id": "1d2c3b4a59687766554433221100ffeeddccbbaa99887766554433221100ffee",
+  "Image": "docker.io/grafana/grafana:11.2.0",
+  "ImageID": "2e4f6a8c0e2f4a6b8d0f2a4c6e8a0b2d4f6a8c0e2f4a6b8d0f2a4c6e8a0b2d4f",
+  "IsInfra": false,
+  "Labels": null,
+  "Mounts": [
+   "/var/lib/grafana"
+  ],
+  "Names": [
+   "grafana"
+  ],
+  "Namespaces": {},
+  "Networks": [],
+  "Pid": 0,
+  "Pod": "",
+  "PodName": "",
+  "Ports": null,
+  "Size": null,
+  "StartedAt": 1727000000,
+  "State": "exited",
+  "Status": "Exited (1) 5 days ago",
+  "Created": 1726400000
+ }
+]
