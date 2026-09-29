@@ -1,0 +1,150 @@
+# Unit tests for alerts.yml:  promtool test rules prometheus/alerts_test.yml
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="proxmox-nodes", instance="pve1:9101"}'
+        values: "1 1 0 0 0 0 0 0"
+      - series: 'proxmox_exporter_collector_success{instance="pve1:9101", collector="smart"}'
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ProxmoxExporterDown
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: ProxmoxExporterDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: proxmox-nodes, instance: "pve1:9101"}
+            exp_annotations:
+              summary: "Exporter on pve1:9101 is not reachable"
+              description: "Prometheus could not scrape pve1:9101 for 5 minutes: the node or the exporter is down."
+      - eval_time: 16m
+        alertname: ProxmoxExporterCollectorFailing
+        exp_alerts:
+          - exp_labels: {severity: warning, instance: "pve1:9101", collector: smart}
+            exp_annotations:
+              summary: "Collector smart is failing on pve1:9101"
+              description: "See `journalctl -u proxmox-node-exporter` on the node for the error."
+
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{instance="pve1:9101", device="/dev/mapper/pve-root", mountpoint="/", fstype="ext4"}'
+        values: "8x30"
+      - series: 'node_filesystem_size_bytes{instance="pve1:9101", device="/dev/mapper/pve-root", mountpoint="/", fstype="ext4"}'
+        values: "100x30"
+      - series: 'node_filesystem_readonly{instance="pve1:9101", device="/dev/mapper/pve-root", mountpoint="/", fstype="ext4"}'
+        values: "0x30"
+      # A read-only filesystem that is full on purpose must not alert.
+      - series: 'node_filesystem_avail_bytes{instance="pve1:9101", device="/dev/sr0", mountpoint="/media", fstype="ext4"}'
+        values: "0x30"
+      - series: 'node_filesystem_size_bytes{instance="pve1:9101", device="/dev/sr0", mountpoint="/media", fstype="ext4"}'
+        values: "100x30"
+      - series: 'node_filesystem_readonly{instance="pve1:9101", device="/dev/sr0", mountpoint="/media", fstype="ext4"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: FilesystemSpaceLow
+        exp_alerts:
+          - exp_labels: {severity: warning, instance: "pve1:9101", device: /dev/mapper/pve-root, mountpoint: /, fstype: ext4}
+            exp_annotations:
+              summary: "/ on pve1:9101 has 8.0% space left"
+      - eval_time: 20m
+        alertname: FilesystemSpaceCritical
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'node_zfs_zpool_health{instance="pve1:9101", pool="rpool"}'
+        values: "0 0 1 1"
+      - series: 'node_zfs_zpool_data_errors{instance="pve1:9101", pool="rpool"}'
+        values: "0 0 0 2"
+      - series: 'node_zfs_zpool_errors_total{instance="pve1:9101", pool="rpool", type="checksum"}'
+        values: "0 0 0 5"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ZfsPoolNotOnline
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: ZfsPoolNotOnline
+        exp_alerts:
+          - exp_labels: {severity: critical, instance: "pve1:9101", pool: rpool}
+            exp_annotations:
+              summary: "ZFS pool rpool on pve1:9101 is not ONLINE"
+              description: "Health code 1 (1 degraded, 2 faulted, 3 offline, 4 unavail, 5 removed, 6 suspended); run `zpool status -x`."
+      - eval_time: 3m
+        alertname: ZfsPoolDataErrors
+        exp_alerts:
+          - exp_labels: {severity: critical, instance: "pve1:9101", pool: rpool}
+            exp_annotations:
+              summary: "ZFS pool rpool on pve1:9101 has 2 file(s) with permanent errors"
+              description: "Run `zpool status -v rpool` to list them."
+      - eval_time: 3m
+        alertname: ZfsPoolErrors
+        exp_alerts:
+          - exp_labels: {severity: warning, instance: "pve1:9101", pool: rpool, type: checksum}
+            exp_annotations:
+              summary: "ZFS pool rpool on pve1:9101 logged checksum errors"
+
+  - interval: 1m
+    input_series:
+      # Every node reports every member; the offline node reports nothing.
+      - series: 'pve_cluster_member_online{instance="pve1:9101", member="pve1"}'
+        values: "1x10"
+      - series: 'pve_cluster_member_online{instance="pve1:9101", member="pve3"}'
+        values: "0x10"
+      - series: 'pve_cluster_member_online{instance="pve2:9101", member="pve3"}'
+        values: "0x10"
+      - series: 'pve_cluster_quorate{instance="pve1:9101"}'
+        values: "1 1 0 0 0"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: PveClusterMemberOffline
+        exp_alerts:
+          - exp_labels: {severity: warning, member: pve3}
+            exp_annotations:
+              summary: "Cluster member pve3 is offline"
+      - eval_time: 4m
+        alertname: PveClusterNotQuorate
+        exp_alerts:
+          - exp_labels: {severity: critical, instance: "pve1:9101"}
+            exp_annotations:
+              summary: "Proxmox cluster has lost quorum (seen from pve1:9101)"
+              description: "/etc/pve is read-only on this node; guests cannot be started or changed."
+
+  - interval: 1m
+    input_series:
+      - series: 'node_ups_on_battery{instance="pve1:9101", ups="apc"}'
+        values: "0 1 1 1"
+      - series: 'node_ups_low_battery{instance="pve1:9101", ups="apc"}'
+        values: "0 0 0 0"
+      - series: 'node_ups_battery_runtime_seconds{instance="pve1:9101", ups="apc"}'
+        values: "1800 900 600 240"
+      - series: 'node_disk_smart_healthy{instance="pve1:9101", device="sda", model="WDC WD40EFRX", serial="WD-123"}'
+        values: "1 0"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: UpsOnBattery
+        exp_alerts:
+          - exp_labels: {severity: warning, instance: "pve1:9101", ups: apc}
+            exp_annotations:
+              summary: "UPS apc on pve1:9101 is running on battery"
+      - eval_time: 2m
+        alertname: UpsBatteryLow
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: UpsBatteryLow
+        exp_alerts:
+          - exp_labels: {severity: critical, instance: "pve1:9101", ups: apc}
+            exp_annotations:
+              summary: "UPS apc on pve1:9101 is about to run out of battery"
+      - eval_time: 1m
+        alertname: DiskSmartFailing
+        exp_alerts:
+          - exp_labels: {severity: critical, instance: "pve1:9101", device: sda, model: WDC WD40EFRX, serial: WD-123}
+            exp_annotations:
+              summary: "SMART reports sda (WDC WD40EFRX, WD-123) on pve1:9101 as FAILING"
+              description: "Replace the disk."
