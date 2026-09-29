@@ -17,11 +17,22 @@
   vars:
     pne_repo: Lazarev-Cloud/proxmox-prometheus-exporter
     pne_version: latest                     # or a tag such as v3.0.0
-    pne_install_args: []                     # e.g. ["--listen=10.0.0.5:9101", "--auto-update"]
+    # Extra installer flags, e.g. ["--listen=10.0.0.5:9101", "--auto-update"].
+    # Pass the listen address as --listen=ADDR so the health check can find it.
+    pne_install_args: []
     pne_release_url: >-
       {{ 'https://github.com/' ~ pne_repo ~ '/releases/'
          ~ ('latest/download' if pne_version == 'latest' else 'download/' ~ pne_version) }}
-    pne_port: 9101
+    # Where the exporter listens: the last --listen=ADDR, else all interfaces.
+    pne_listen: >-
+      {{ (pne_install_args | select('match', '^--listen=') | list | last
+          | default('--listen=:9101'))[9:] }}
+    # /healthz on the address the exporter actually binds (127.0.0.1 when it
+    # listens on all interfaces).
+    pne_health_url: >-
+      {%- set host = pne_listen.rpartition(':')[0] -%}
+      http://{{ '127.0.0.1' if host in ['', '0.0.0.0', '[::]'] else host
+      }}:{{ pne_listen.rpartition(':')[2] }}/healthz
   tasks:
     - name: Download the installer (checksum verified)
       ansible.builtin.get_url:
@@ -42,10 +53,12 @@
 
     - name: Wait for the exporter to be healthy
       ansible.builtin.uri:
-        url: "http://127.0.0.1:{{ pne_port }}/healthz"
+        url: "{{ pne_health_url }}"
         status_code: 200
       register: pne_health
       retries: 10
       delay: 3
       until: pne_health.status == 200
-      when: "'--web.config-file' not in (pne_install_args | join(' '))"
+      # With --web-config the endpoint may be HTTPS-only; the installer has
+      # already checked /healthz over HTTP and HTTPS in that case.
+      when: "'--web-config' not in (pne_install_args | join(' '))"

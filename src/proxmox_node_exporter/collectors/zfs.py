@@ -103,6 +103,24 @@ class PoolStatus:
     scan: str = ""
     vdevs: list[tuple[str, str, tuple[int, int, int]]] = field(default_factory=list)
     data_errors: int | None = None
+    listing_files: bool = False
+    listed_files: int = 0
+
+
+def _data_errors(value: str) -> int | None:
+    """Number of files with permanent errors from the ``errors:`` line.
+
+    None (not exported) when the line can't be interpreted, e.g. "List of
+    errors unavailable" for unprivileged users, rather than a false 0.
+    """
+    if value.startswith("No known data errors"):
+        return 0
+    found = re.match(r"(\d+) data errors?", value)
+    if found:
+        return int(found.group(1))
+    if value.startswith("Permanent errors have been detected"):
+        return 1  # at least one; the file list that follows is counted
+    return None
 
 
 def parse_zpool_status(text: str) -> list[PoolStatus]:
@@ -123,14 +141,18 @@ def parse_zpool_status(text: str) -> list[PoolStatus]:
             elif key == "scan":
                 current.scan = value
             elif key == "errors":
-                found = re.match(r"(\d+) data errors", value)
-                current.data_errors = int(found.group(1)) if found else 0
+                current.data_errors = _data_errors(value)
+                current.listing_files = value.startswith("Permanent errors")
             continue
         if current is None:
             continue
         line = raw.strip()
         if key == "scan" and line:
             current.scan += " " + line
+        elif key == "errors" and line and current.listing_files:
+            # With -v, each affected file follows on its own line.
+            current.listed_files += 1
+            current.data_errors = max(current.data_errors or 0, current.listed_files)
         elif key == "config":
             fields = line.split()
             if len(fields) >= 5 and fields[0] != "NAME" and all(f.isdigit() for f in fields[2:5]):

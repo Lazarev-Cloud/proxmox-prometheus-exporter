@@ -443,3 +443,46 @@ def test_datasets_can_be_disabled(make_ctx: Callable[..., Context]) -> None:
     assert ZFS_LIST not in runner.calls
     assert "node_zfs_dataset_used_bytes" not in samples
     assert value(samples, "node_zfs_zpool_size_bytes", pool="rpool") == 996432412672
+
+
+_ERRORS_TEMPLATE = """\
+  pool: tank
+ state: ONLINE
+status: One or more devices has experienced an error resulting in data
+\tcorruption.  Applications may be affected.
+action: Restore the file in question if possible.  Otherwise restore the
+\tentire pool from backup.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-8A
+  scan: scrub repaired 0B in 00:10:02 with 2 errors on Sun Sep  8 00:34:03 2024
+config:
+
+\tNAME        STATE     READ WRITE CKSUM
+\ttank        ONLINE       0     0     0
+\t  sda       ONLINE       0     0     4
+
+errors: {errors}
+"""
+
+
+@pytest.mark.parametrize(
+    ("errors", "expected"),
+    [
+        ("No known data errors", 0),
+        ("1 data error, use '-v' for a list", 1),
+        ("12 data errors, use '-v' for a list", 12),
+        # zpool status -v lists the files instead of a count.
+        (
+            "Permanent errors have been detected in the following files:\n\n"
+            "        tank/data/vm-100-disk-0:<0x1>\n"
+            "        /tank/media/movie.mkv\n",
+            2,
+        ),
+        # The list can be unavailable; still never report a clean pool.
+        ("Permanent errors have been detected in the following files:\n", 1),
+        # Unknown wording (e.g. insufficient privileges): no value, not a false 0.
+        ("List of errors unavailable: permission denied", None),
+    ],
+)
+def test_data_errors_line_forms(errors: str, expected: int | None) -> None:
+    (pool,) = parse_zpool_status(_ERRORS_TEMPLATE.format(errors=errors))
+    assert pool.data_errors == expected
