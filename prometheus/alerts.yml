@@ -1,0 +1,374 @@
+# Alerting rules for proxmox-node-exporter.
+#
+# Load them in prometheus.yml:
+#   rule_files:
+#     - /etc/prometheus/rules/proxmox-node-exporter.yml
+#
+# `up` checks assume the scrape job is called "proxmox-nodes"; adjust if yours
+# differs. Thresholds are sensible defaults, tune them to your hardware.
+groups:
+  - name: proxmox-node-exporter
+    rules:
+      - alert: ProxmoxExporterDown
+        expr: up{job="proxmox-nodes"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Exporter on {{ $labels.instance }} is not reachable"
+          description: "Prometheus could not scrape {{ $labels.instance }} for 5 minutes: the node or the exporter is down."
+
+      - alert: ProxmoxExporterCollectorFailing
+        expr: proxmox_exporter_collector_success == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Collector {{ $labels.collector }} is failing on {{ $labels.instance }}"
+          description: "See `journalctl -u proxmox-node-exporter` on the node for the error."
+
+  - name: proxmox-host
+    rules:
+      - alert: HostHighCpuUsage
+        expr: 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 90
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage on {{ $labels.instance }} is {{ $value | printf \"%.0f\" }}%"
+
+      - alert: HostMemoryPressure
+        expr: node_memory_pressure_ratio > 0.95
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 5% of memory is available on {{ $labels.instance }}"
+
+      - alert: HostOomKill
+        expr: increase(node_vmstat_oom_kill_total[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "The kernel OOM killer ran on {{ $labels.instance }}"
+          description: "{{ $value | printf \"%.0f\" }} process(es) were killed; check guest memory overcommit and ZFS ARC size."
+
+      - alert: HostSwapHigh
+        expr: node_memory_swap_used_percent > 80
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Swap is {{ $value | printf \"%.0f\" }}% used on {{ $labels.instance }}"
+
+      - alert: FilesystemSpaceLow
+        expr: |
+          100 * node_filesystem_avail_bytes / node_filesystem_size_bytes < 10
+          and node_filesystem_readonly == 0 and node_filesystem_size_bytes > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} has {{ $value | printf \"%.1f\" }}% space left"
+
+      - alert: FilesystemSpaceCritical
+        expr: |
+          100 * node_filesystem_avail_bytes / node_filesystem_size_bytes < 5
+          and node_filesystem_readonly == 0 and node_filesystem_size_bytes > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} has {{ $value | printf \"%.1f\" }}% space left"
+
+      - alert: FilesystemWillFillIn24Hours
+        expr: |
+          predict_linear(node_filesystem_avail_bytes[6h], 24 * 3600) < 0
+          and 100 * node_filesystem_avail_bytes / node_filesystem_size_bytes < 40
+          and node_filesystem_readonly == 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} will be full within 24 hours at the current rate"
+
+      - alert: FilesystemInodesLow
+        expr: 100 * node_filesystem_files_free / node_filesystem_files < 10 and node_filesystem_files > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} has {{ $value | printf \"%.1f\" }}% inodes left"
+
+      - alert: FilesystemBecameReadOnly
+        expr: node_filesystem_readonly == 1 and node_filesystem_readonly offset 30m == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} was remounted read-only"
+          description: "This usually means the kernel hit I/O or filesystem errors; check dmesg."
+
+      - alert: FilesystemUnresponsive
+        expr: node_filesystem_device_error == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "statfs on {{ $labels.mountpoint }} ({{ $labels.fstype }}) fails or hangs on {{ $labels.instance }}"
+          description: "Typical causes: an unreachable NFS/CIFS server or a suspended ZFS pool."
+
+      - alert: DiskSaturated
+        expr: rate(node_disk_io_time_seconds_total{device!~"dm-.*"}[5m]) > 0.95
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk {{ $labels.device }} on {{ $labels.instance }} has been busy >95% for 30 minutes"
+
+      - alert: NetworkInterfaceErrors
+        expr: |
+          rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]) > 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} reports {{ $value | printf \"%.1f\" }} errors/s"
+
+      - alert: NetworkBondDegraded
+        expr: node_bonding_active < node_bonding_slaves
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Bond {{ $labels.master }} on {{ $labels.instance }} has only {{ $value }} active member(s)"
+
+      - alert: SystemdUnitFailed
+        expr: node_systemd_unit_state{state="failed"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} failed on {{ $labels.instance }}"
+
+  - name: proxmox-hardware
+    rules:
+      - alert: HardwareTemperatureAlarm
+        expr: node_hwmon_temp_alarm == 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.chip }} {{ $labels.label }} raised a temperature alarm on {{ $labels.instance }}"
+
+      - alert: HardwareTemperatureNearCritical
+        expr: |
+          node_hwmon_temp_celsius
+          >= on (instance, chip, device, sensor, label) (node_hwmon_temp_crit_celsius - 5)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.chip }} {{ $labels.label }} on {{ $labels.instance }} is at {{ $value }}°C, near its critical limit"
+
+      - alert: DiskSmartFailing
+        expr: node_disk_smart_healthy == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "SMART reports {{ $labels.device }} ({{ $labels.model }}, {{ $labels.serial }}) on {{ $labels.instance }} as FAILING"
+          description: "Replace the disk."
+
+      - alert: DiskSectorsReallocated
+        expr: delta(node_disk_smart_reallocated_sectors[1d]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} ({{ $labels.model }}) on {{ $labels.instance }} reallocated sectors in the last day"
+
+      - alert: DiskPendingSectors
+        expr: node_disk_smart_pending_sectors > 0 or node_disk_smart_uncorrectable_sectors > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} ({{ $labels.model }}) on {{ $labels.instance }} has unreadable sectors"
+
+      - alert: DiskCrcErrors
+        expr: delta(node_disk_smart_udma_crc_errors[1d]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} on {{ $labels.instance }} logs interface CRC errors; check the SATA cable"
+
+      - alert: DiskTemperatureHigh
+        expr: node_disk_smart_temperature_celsius > 60
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} ({{ $labels.model }}) on {{ $labels.instance }} is at {{ $value }}°C"
+
+      - alert: SsdWearHigh
+        expr: node_disk_smart_ssd_wearout_percent > 90
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} ({{ $labels.model }}) on {{ $labels.instance }} has used {{ $value }}% of its rated endurance"
+
+      - alert: NvmeCriticalWarning
+        expr: node_disk_smart_critical_warning > 0 or node_disk_smart_available_spare_percent < 10
+        labels:
+          severity: critical
+        annotations:
+          summary: "NVMe {{ $labels.device }} ({{ $labels.model }}) on {{ $labels.instance }} reports a critical warning or low spare"
+
+      - alert: IpmiSensorCritical
+        expr: node_ipmi_sensor_state >= 2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BMC sensor {{ $labels.name }} on {{ $labels.instance }} is critical"
+
+      - alert: IpmiSensorWarning
+        expr: node_ipmi_sensor_state == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BMC sensor {{ $labels.name }} on {{ $labels.instance }} is outside its normal range"
+
+      - alert: GpuTemperatureHigh
+        expr: node_gpu_temp_celsius > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU {{ $labels.gpu }} ({{ $labels.name }}) on {{ $labels.instance }} is at {{ $value }}°C"
+
+      - alert: UpsOnBattery
+        expr: node_ups_on_battery == 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "UPS {{ $labels.ups }} on {{ $labels.instance }} is running on battery"
+
+      - alert: UpsBatteryLow
+        expr: node_ups_low_battery == 1 or (node_ups_on_battery == 1 and on (instance, ups) node_ups_battery_runtime_seconds < 300)
+        labels:
+          severity: critical
+        annotations:
+          summary: "UPS {{ $labels.ups }} on {{ $labels.instance }} is about to run out of battery"
+
+      - alert: UpsReplaceBattery
+        expr: node_ups_replace_battery == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "UPS {{ $labels.ups }} on {{ $labels.instance }} asks for a battery replacement"
+
+  - name: proxmox-storage
+    rules:
+      - alert: ZfsPoolNotOnline
+        expr: node_zfs_zpool_health > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is not ONLINE"
+          description: "Health code {{ $value }} (1 degraded, 2 faulted, 3 offline, 4 unavail, 5 removed, 6 suspended); run `zpool status -x`."
+
+      - alert: ZfsPoolErrors
+        expr: increase(node_zfs_zpool_errors_total[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "ZFS pool {{ $labels.pool }} on {{ $labels.instance }} logged {{ $labels.type }} errors"
+
+      - alert: ZfsPoolDataErrors
+        expr: node_zfs_zpool_data_errors > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "ZFS pool {{ $labels.pool }} on {{ $labels.instance }} has {{ $value }} file(s) with permanent errors"
+          description: "Run `zpool status -v {{ $labels.pool }}` to list them."
+
+      - alert: ZfsPoolSpaceLow
+        expr: 100 * node_zfs_zpool_allocated_bytes / node_zfs_zpool_size_bytes > 85
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is {{ $value | printf \"%.0f\" }}% full"
+          description: "ZFS slows down considerably above ~80-90% allocation."
+
+      - alert: ZfsScrubOverdue
+        expr: time() - node_zfs_zpool_last_scrub_timestamp_seconds > 40 * 86400
+        labels:
+          severity: warning
+        annotations:
+          summary: "ZFS pool {{ $labels.pool }} on {{ $labels.instance }} has not been scrubbed for {{ $value | humanizeDuration }}"
+
+      - alert: MdRaidDegraded
+        expr: node_md_degraded > 0 or node_md_disks_failed > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "RAID array {{ $labels.device }} on {{ $labels.instance }} is degraded"
+
+      - alert: BtrfsDeviceErrors
+        expr: increase(node_btrfs_device_errors_total[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Btrfs {{ $labels.label }} device {{ $labels.devid }} on {{ $labels.instance }} logged {{ $labels.type }} errors"
+
+  - name: proxmox-ve
+    rules:
+      - alert: PveClusterNotQuorate
+        expr: pve_cluster_quorate == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Proxmox cluster has lost quorum (seen from {{ $labels.instance }})"
+          description: "/etc/pve is read-only on this node; guests cannot be started or changed."
+
+      - alert: PveClusterMemberOffline
+        expr: max by (member) (pve_cluster_member_online) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cluster member {{ $labels.member }} is offline"
+
+      - alert: PveStorageSpaceLow
+        expr: 100 * pve_storage_used_bytes / pve_storage_total_bytes > 90 and pve_storage_total_bytes > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Storage {{ $labels.storage }} on {{ $labels.instance }} is {{ $value | printf \"%.0f\" }}% full"
+
+      - alert: PveStorageUnavailable
+        expr: pve_storage_active == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Storage {{ $labels.storage }} ({{ $labels.type }}) is not available on {{ $labels.instance }}"
+
+      - alert: PveReplicationFailing
+        expr: pve_replication_failures > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Replication job {{ $labels.job }} (guest {{ $labels.guest }} -> {{ $labels.target }}) is failing"
+
+      - alert: PveCertificateExpiring
+        expr: pve_certificate_expiry_timestamp_seconds - time() < 14 * 86400
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certificate {{ $labels.certificate }} on {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"

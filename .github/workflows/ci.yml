@@ -1,0 +1,193 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:v3.15.0
+
+jobs:
+  lint:
+    name: Lint, types, generated files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install pinned dev dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+      - run: ruff format --check .
+      - run: ruff check .
+      - run: mypy
+      - name: ShellCheck
+        run: shellcheck install.sh tests/integration/installer.sh
+      - name: actionlint
+        run: actionlint
+      - name: Generated docs and dashboards are up to date
+        run: |
+          python tools/gen_metrics_doc.py --check
+          python tools/gen_health_dashboard.py --check
+
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9: Proxmox VE 7 (Debian 11), 3.11: PVE 8 (Debian 12), 3.13: PVE 9 (Debian 13)
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install pinned dev dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+      - name: pytest
+        run: pytest --cov --cov-report=term --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: matrix.python == '3.13'
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 14
+
+  rules:
+    name: Prometheus rules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: promtool check rules / test rules
+        run: |
+          docker run --rm -v "$PWD/prometheus:/rules:ro" -w /rules --entrypoint promtool \
+            "$PROMETHEUS_IMAGE" check rules alerts.yml
+          docker run --rm -v "$PWD/prometheus:/rules:ro" -w /rules --entrypoint promtool \
+            "$PROMETHEUS_IMAGE" test rules alerts_test.yml
+
+  build:
+    name: Build and smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Build release artefacts
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m build --sdist --wheel --outdir dist/
+          cp install.sh dist/
+          python tools/build_dist.py
+          cat dist/SHA256SUMS
+      - name: The zipapp is reproducible
+        run: |
+          python tools/build_pyz.py /tmp/rebuild.pyz
+          cmp dist/proxmox-node-exporter.pyz /tmp/rebuild.pyz
+      - name: Smoke test with the system Python, isolated mode
+        run: |
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --version
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --list-collectors
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --once > /tmp/once.prom
+          python -c "
+          from prometheus_client.parser import text_string_to_metric_families as parse
+          families = list(parse(open('/tmp/once.prom').read()))
+          print(len(families), 'metric families parse cleanly')
+          assert len(families) > 50
+          "
+          /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --web.listen-address=127.0.0.1:9101 &
+          pid=$!
+          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:9101/healthz && break; sleep 0.5; done
+          curl -fsS --compressed http://127.0.0.1:9101/metrics | grep -q '^node_load1 '
+          kill "$pid"
+      - name: systemd units are valid and hardened
+        run: |
+          systemd-analyze verify packaging/proxmox-node-exporter.service \
+            packaging/proxmox-node-exporter-update.service packaging/proxmox-node-exporter-update.timer
+          systemd-analyze security --offline=true --threshold=50 --no-pager \
+            packaging/proxmox-node-exporter.service
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 14
+
+  installer:
+    name: Installer end-to-end (systemd)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install, upgrade with rollback, uninstall
+        run: sudo bash tests/integration/installer.sh
+
+  installer-debian:
+    name: Installer on ${{ matrix.pve }} (Debian ${{ matrix.debian }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - debian: bookworm
+            pve: Proxmox VE 8
+          - debian: trixie  # Python 3.13, PEP 668: pip install is blocked (issue #2)
+            pve: Proxmox VE 9
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Boot Debian with systemd
+        env:
+          DEBIAN: ${{ matrix.debian }}
+        run: |
+          docker build --build-arg DEBIAN="$DEBIAN" -t installer-test tests/integration
+          docker run -d --name installer-test --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
+            -v "$PWD:/src:ro" installer-test
+          state=unknown
+          for _ in $(seq 1 60); do
+            state="$(docker exec installer-test systemctl is-system-running 2>/dev/null || true)"
+            case "$state" in running|degraded) break ;; esac
+            sleep 1
+          done
+          echo "systemd: $state"
+          docker exec installer-test python3 --version
+      - name: Install with apt dependencies, as a user would
+        run: docker exec installer-test bash -c 'cp -r /src /work && bash /work/install.sh --from-source --yes'
+      - name: End-to-end installer test
+        run: docker exec installer-test bash /work/tests/integration/installer.sh
+      - name: Service log
+        if: failure()
+        run: |
+          docker exec installer-test journalctl -u proxmox-node-exporter --no-pager -n 100 || true
+          docker exec installer-test sh -c 'smartctl --scan; smartctl --scan \
+            | while read -r dev _ kind _; do smartctl -a -n standby -d "$kind" "$dev"; echo "exit $?"; done' || true

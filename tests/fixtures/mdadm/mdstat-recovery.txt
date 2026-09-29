@@ -1,0 +1,21 @@
+Personalities : [raid1] [raid6] [raid5] [raid4] [linear] [multipath] [raid0] [raid10] 
+md2 : active raid5 sdf1[5](S) sde1[4] sdd1[3] sdc1[2](F) sdb1[1] sda1[0]
+      5860147200 blocks super 1.2 level 5, 512k chunk, algorithm 2 [4/3] [UU_U]
+      [===>.................]  recovery = 17.4% (340047488/1953382400) finish=148.6min speed=180883K/sec
+      bitmap: 2/15 pages [8KB], 65536KB chunk
+
+md1 : active raid1 sdh2[1] sdg2[0]
+      976629760 blocks super 1.2 [2/2] [UU]
+      	resync=DELAYED
+      bitmap: 8/8 pages [32KB], 65536KB chunk
+
+md0 : active raid1 sdh1[1] sdg1[0]
+      1046528 blocks super 1.2 [2/2] [UU]
+      [=========>...........]  resync = 48.3% (505728/1046528) finish=0.0min speed=101145K/sec
+      
+md127 : active (auto-read-only) raid1 sdj[1] sdi[0]
+      1953382464 blocks super 1.2 [2/2] [UU]
+      	resync=PENDING
+      bitmap: 15/15 pages [60KB], 65536KB chunk
+
+unused devices: <none>

@@ -1,0 +1,93 @@
+name: Release
+
+# Push a tag like v3.0.1 (matching __version__) to publish a release:
+#   git tag -s v3.0.1 -m v3.0.1 && git push origin v3.0.1
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and attest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write      # Sigstore signing of the provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Tag matches the package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(python -c 'import sys; sys.path.insert(0, "src"); import proxmox_node_exporter as p; print(p.__version__)')"
+          test "v${version}" = "$TAG" || { echo "tag $TAG != __version__ $version"; exit 1; }
+      - name: Build
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m build --sdist --wheel --outdir dist/
+          cp install.sh dist/
+          python tools/build_dist.py
+          cat dist/SHA256SUMS
+      - name: Smoke test
+        run: /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --once --collectors system > /dev/null
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.pyz
+            dist/*.tar.gz
+            dist/*.whl
+            dist/install.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist
+      - name: Release notes from CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          awk -v v="${TAG#v}" '
+            $0 ~ "^## \\[?" v "\\]?" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          {
+            echo
+            echo "### Verify the download"
+            echo '```sh'
+            echo "sha256sum -c --ignore-missing SHA256SUMS"
+            echo "gh attestation verify proxmox-node-exporter-${TAG#v}.tar.gz --repo ${GITHUB_REPOSITORY}"
+            echo '```'
+          } >> notes.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* --verify-tag --title "$TAG" --notes-file notes.md

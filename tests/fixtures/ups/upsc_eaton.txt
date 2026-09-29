@@ -1,0 +1,38 @@
+battery.charge: 18
+battery.charge.low: 20
+battery.runtime: 142
+battery.type: PbAc
+device.mfr: EATON
+device.model: Eaton 5E 1100i
+device.type: ups
+driver.name: usbhid-ups
+driver.parameter.pollfreq: 30
+driver.parameter.pollinterval: 2
+driver.parameter.port: auto
+driver.parameter.synchronous: auto
+driver.version: 2.8.0
+driver.version.data: MGE HID 1.46
+driver.version.internal: 0.47
+input.voltage: 0.0
+outlet.1.status: on
+outlet.desc: Main Outlet
+outlet.id: 1
+outlet.switchable: no
+output.frequency: 50.0
+output.frequency.nominal: 50
+output.voltage: 230.0
+output.voltage.nominal: 230
+ups.beeper.status: enabled
+ups.delay.shutdown: 20
+ups.firmware: 03.08.0018
+ups.load: 41
+ups.mfr: EATON
+ups.model: Eaton 5E 1100i
+ups.power.nominal: 1100
+ups.productid: ffff
+ups.realpower: 283
+ups.start.battery: yes
+ups.status: OB LB
+ups.temperature: 31.5
+ups.timer.shutdown: -1
+ups.vendorid: 0463

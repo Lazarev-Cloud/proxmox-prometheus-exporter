@@ -1,0 +1,30 @@
+# Example Prometheus configuration for proxmox-node-exporter.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/rules/proxmox-node-exporter.yml  # prometheus/alerts.yml
+
+scrape_configs:
+  # Plain HTTP. Restrict port 9101 to the Prometheus server with the Proxmox
+  # firewall (Datacenter -> Firewall) or bind the exporter to a management
+  # network with --web.listen-address.
+  - job_name: proxmox-nodes
+    scrape_timeout: 20s
+    static_configs:
+      - targets:
+          - pve1.example.com:9101
+          - pve2.example.com:9101
+          - pve3.example.com:9101
+
+  # The same with TLS and basic auth (see docs/security.md).
+  # - job_name: proxmox-nodes
+  #   scheme: https
+  #   tls_config:
+  #     ca_file: /etc/prometheus/proxmox-ca.pem   # e.g. a copy of /etc/pve/pve-root-ca.pem
+  #   basic_auth:
+  #     username: prometheus
+  #     password_file: /etc/prometheus/proxmox-node-exporter.password
+  #   static_configs:
+  #     - targets: [pve1.example.com:9101]

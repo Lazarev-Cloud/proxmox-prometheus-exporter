@@ -1,0 +1,7 @@
+Personalities : [raid1] 
+md0 : active raid1 sdb1[1] sda1[0]
+      1953382464 blocks super 1.2 [2/2] [UU]
+      [=>...................]  check =  8.5% (166042368/1953382464) finish=144.2min speed=206550K/sec
+      bitmap: 0/15 pages [0KB], 65536KB chunk
+
+unused devices: <none>

@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proxmox-node-exporter"
+dynamic = ["version"]
+description = "Prometheus exporter for Proxmox VE hosts: system, hardware, ZFS, SMART, GPU and guest metrics"
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "lazarev.cloud" }]
+keywords = ["proxmox", "prometheus", "exporter", "monitoring", "zfs", "smart", "gpu"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: No Input/Output (Daemon)",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: System :: Monitoring",
+]
+# Runtime is stdlib-only on purpose: nothing but the exporter itself runs as
+# root on the hypervisor, and there is no third-party supply chain to audit.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "actionlint-py>=1.7",
+    "build>=1.2",
+    "mypy>=1.10",
+    "prometheus-client>=0.17",
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+    "shellcheck-py>=0.10",
+]
+
+[project.scripts]
+proxmox-node-exporter = "proxmox_node_exporter.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter"
+Issues = "https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter/issues"
+Changelog = "https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = { attr = "proxmox_node_exporter.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF", "PT", "BLE"]
+ignore = [
+    # Commands are executed without a shell, from a fixed PATH, with argv
+    # built from validated values; see runner.py.
+    "S603",
+    "S607",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S108", "S310"]
+"tools/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src", "tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["proxmox_node_exporter"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85

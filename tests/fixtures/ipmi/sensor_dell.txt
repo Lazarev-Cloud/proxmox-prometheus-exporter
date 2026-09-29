@@ -1,0 +1,21 @@
+Fan1             | 3720.000   | RPM        | ok    | na        | 360.000   | 600.000   | na        | na        | na        
+Fan2             | 3840.000   | RPM        | ok    | na        | 360.000   | 600.000   | na        | na        | na        
+Fan3             | 480.000    | RPM        | nc    | na        | 360.000   | 600.000   | na        | na        | na        
+Fan4             | 3720.000   | RPM        | ok    | na        | 360.000   | 600.000   | na        | na        | na        
+Inlet Temp       | 21.000     | degrees C  | ok    | na        | -7.000    | 3.000     | 42.000    | 47.000    | na        
+Exhaust Temp     | 33.000     | degrees C  | ok    | na        | 3.000     | 8.000     | 70.000    | 75.000    | na        
+Temp             | 45.000     | degrees C  | ok    | na        | 3.000     | 8.000     | 84.000    | 89.000    | na        
+Temp             | 91.000     | degrees C  | cr    | na        | 3.000     | 8.000     | 84.000    | 89.000    | na        
+Current 1        | 0.600      | Amps       | ok    | na        | na        | na        | na        | na        | na        
+Current 2        | 0.200      | Amps       | ok    | na        | na        | na        | na        | na        | na        
+Voltage 1        | 230.000    | Volts      | ok    | na        | na        | na        | na        | na        | na        
+Voltage 2        | 232.000    | Volts      | ok    | na        | na        | na        | na        | na        | na        
+Pwr Consumption  | 154.000    | Watts      | ok    | na        | na        | na        | 1554.000  | 1708.000  | na        
+CPU Usage        | 12.000     | percent    | ok    | na        | na        | na        | na        | na        | na        
+Fan Redundancy   | 0x0        | discrete   | 0x0180| na        | na        | na        | na        | na        | na        
+PS Redundancy    | 0x0        | discrete   | 0x0180| na        | na        | na        | na        | na        | na        
+Intrusion        | 0x0        | discrete   | 0x0080| na        | na        | na        | na        | na        | na        
+Presence         | 0x0        | discrete   | 0x0080| na        | na        | na        | na        | na        | na        
+Presence         | 0x0        | discrete   | 0x0080| na        | na        | na        | na        | na        | na        
+Status           | 0x0        | discrete   | 0x8080| na        | na        | na        | na        | na        | na        
+Status           | 0x0        | discrete   | 0x0180| na        | na        | na        | na        | na        | na        

@@ -1,0 +1,132 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      3
+    ],
+    "svn_revision": "5338",
+    "platform_info": "x86_64-linux-6.8.12-2-pve",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--json",
+      "-a",
+      "-n",
+      "standby",
+      "-d",
+      "scsi",
+      "/dev/sdc"
+    ],
+    "exit_status": 0
+  },
+  "local_time": {
+    "time_t": 1727600000,
+    "asctime": "Sun Sep 29 10:53:20 2024 CEST"
+  },
+  "device": {
+    "name": "/dev/sdc",
+    "info_name": "/dev/sdc",
+    "type": "scsi",
+    "protocol": "SCSI"
+  },
+  "scsi_vendor": "SEAGATE",
+  "scsi_product": "ST4000NM0023",
+  "scsi_model_name": "SEAGATE ST4000NM0023",
+  "scsi_revision": "GS10",
+  "scsi_version": "SPC-4",
+  "user_capacity": {
+    "blocks": 7814037168,
+    "bytes": 4000787030016
+  },
+  "logical_block_size": 512,
+  "rotation_rate": 7200,
+  "form_factor": {
+    "scsi_value": 2,
+    "name": "3.5 inches"
+  },
+  "logical_unit_id": "0x5000c50057a1b2c3",
+  "serial_number": "Z1Z3ABCD0000C4471234",
+  "device_type": {
+    "scsi_terminology": "direct access block device",
+    "scsi_value": 0
+  },
+  "scsi_transport_protocol": {
+    "name": "SAS (SPL-4)",
+    "value": 6
+  },
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "temperature_warning": {
+    "enabled": true
+  },
+  "smart_status": {
+    "passed": true
+  },
+  "temperature": {
+    "current": 36,
+    "drive_trip": 68
+  },
+  "power_on_time": {
+    "hours": 41234,
+    "minutes": 12
+  },
+  "scsi_start_stop_cycle_counter": {
+    "year_of_manufacture": "2015",
+    "week_of_manufacture": "12",
+    "specified_cycle_count_over_device_lifetime": 10000,
+    "accumulated_start_stop_cycles": 55,
+    "specified_load_unload_count_over_device_lifetime": 300000,
+    "accumulated_load_unload_cycles": 1204
+  },
+  "scsi_grown_defect_list": 8,
+  "scsi_error_counter_log": {
+    "read": {
+      "errors_corrected_by_eccfast": 3462341,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 3462341,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "185623.123",
+      "total_uncorrected_errors": 0
+    },
+    "write": {
+      "errors_corrected_by_eccfast": 0,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 0,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "94512.332",
+      "total_uncorrected_errors": 0
+    },
+    "verify": {
+      "errors_corrected_by_eccfast": 12,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 12,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "3521.009",
+      "total_uncorrected_errors": 0
+    }
+  },
+  "scsi_self_test_0": {
+    "code": {
+      "value": 1,
+      "string": "Background short"
+    },
+    "result": {
+      "value": 0,
+      "string": "Completed"
+    },
+    "power_on_time": {
+      "hours": 41200,
+      "aka": "accumulated_power_on_hours"
+    }
+  },
+  "scsi_extended_self_test_seconds": 30120
+}

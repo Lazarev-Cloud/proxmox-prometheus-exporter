@@ -1,0 +1,110 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      3
+    ],
+    "svn_revision": "5338",
+    "platform_info": "x86_64-linux-6.8.12-2-pve",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--json",
+      "-a",
+      "-n",
+      "standby",
+      "-d",
+      "megaraid,0",
+      "/dev/bus/0"
+    ],
+    "exit_status": 0
+  },
+  "local_time": {
+    "time_t": 1727600000,
+    "asctime": "Sun Sep 29 10:53:20 2024 CEST"
+  },
+  "device": {
+    "name": "/dev/bus/0",
+    "info_name": "/dev/bus/0 [megaraid_disk_00]",
+    "type": "megaraid,0",
+    "protocol": "SCSI"
+  },
+  "scsi_vendor": "HGST",
+  "scsi_product": "HUH721010AL5200",
+  "scsi_model_name": "HGST HUH721010AL5200",
+  "scsi_revision": "A384",
+  "scsi_version": "SPC-4",
+  "user_capacity": {
+    "blocks": 19532873728,
+    "bytes": 10000831348736
+  },
+  "logical_block_size": 512,
+  "physical_block_size": 4096,
+  "rotation_rate": 7200,
+  "form_factor": {
+    "scsi_value": 2,
+    "name": "3.5 inches"
+  },
+  "logical_unit_id": "0x5000cca26b123456",
+  "serial_number": "7JH1ABCD",
+  "device_type": {
+    "scsi_terminology": "direct access block device",
+    "scsi_value": 0
+  },
+  "scsi_transport_protocol": {
+    "name": "SAS (SPL-4)",
+    "value": 6
+  },
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "temperature_warning": {
+    "enabled": true
+  },
+  "smart_status": {
+    "passed": true
+  },
+  "temperature": {
+    "current": 31,
+    "drive_trip": 85
+  },
+  "power_on_time": {
+    "hours": 22110,
+    "minutes": 40
+  },
+  "scsi_grown_defect_list": 0,
+  "scsi_error_counter_log": {
+    "read": {
+      "errors_corrected_by_eccfast": 0,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 0,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "71234.221",
+      "total_uncorrected_errors": 0
+    },
+    "write": {
+      "errors_corrected_by_eccfast": 0,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 0,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "20233.187",
+      "total_uncorrected_errors": 0
+    },
+    "verify": {
+      "errors_corrected_by_eccfast": 0,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 0,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "112.004",
+      "total_uncorrected_errors": 0
+    }
+  }
+}

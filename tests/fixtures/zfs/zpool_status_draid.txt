@@ -1,0 +1,29 @@
+  pool: vault
+ state: DEGRADED
+status: One or more devices is currently being resilvered.  The pool will
+	continue to function, possibly in a degraded state.
+action: Wait for the resilver to complete.
+  scan: scrub repaired 0B in 00:10:15 with 0 errors on Sun Sep 29 00:34:16 2024
+  scan: resilver (draid2:4d:9c:1s-0) in progress since Mon Sep 30 09:12:44 2024
+	5.12T / 9.87T scanned at 3.02G/s, 5.10T / 9.87T issued at 3.01G/s
+	312G resilvered, 51.87% done, 00:27:02 to go
+config:
+
+	NAME                 STATE     READ WRITE CKSUM
+	vault                DEGRADED     0     0     0
+	  draid2:4d:9c:1s-0  DEGRADED     0     0     0
+	    sda              ONLINE       0     0     0
+	    sdb              ONLINE       0     0     0
+	    sdc              ONLINE       0     0     0
+	    sdd              ONLINE       0     0     0
+	    spare-4          DEGRADED     0     0     0
+	      sde            FAULTED      0    58     0  too many errors
+	      draid2-0-0     ONLINE       0     0     0  (resilvering)
+	    sdf              ONLINE       0     0     0
+	    sdg              ONLINE       0     0     0
+	    sdh              ONLINE       0     0     0
+	    sdi              ONLINE       0     0     0
+	spares
+	  draid2-0-0         INUSE     currently in use
+
+errors: No known data errors

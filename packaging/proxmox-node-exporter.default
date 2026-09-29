@@ -1,0 +1,14 @@
+# Options for proxmox-node-exporter (read by its systemd unit).
+# Run `python3 /opt/proxmox-node-exporter/proxmox-node-exporter.pyz --help`
+# for the full list, then `systemctl restart proxmox-node-exporter`.
+#
+# Examples:
+#   Listen on one address only:
+#     --web.listen-address=10.0.0.5:9101
+#   TLS and/or basic auth (see /etc/proxmox-node-exporter/web.ini.example):
+#     --web.config-file=/etc/proxmox-node-exporter/web.ini
+#   Turn collectors off, or slow one down:
+#     --collectors.disable=containers,ups --collector.interval=smart=300
+#
+# This file is created on first install and never overwritten afterwards.
+ARGS=""

@@ -1,0 +1,37 @@
+# Optional local hooks: pip install pre-commit && pre-commit install
+# The hooks use the tools pinned in requirements-dev.txt (run `make dev` first).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: .venv/bin/ruff format
+        language: system
+        types: [python]
+      - id: ruff
+        name: ruff check
+        entry: .venv/bin/ruff check --fix
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy
+        entry: .venv/bin/mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: shellcheck
+        name: shellcheck
+        entry: .venv/bin/shellcheck
+        language: system
+        types: [shell]
+      - id: actionlint
+        name: actionlint
+        entry: .venv/bin/actionlint
+        language: system
+        files: ^\.github/workflows/
+      - id: generated-files
+        name: generated docs and dashboards are up to date
+        entry: bash -c '.venv/bin/python tools/gen_metrics_doc.py --check && .venv/bin/python tools/gen_health_dashboard.py --check'
+        language: system
+        pass_filenames: false
+        files: ^(src|tools)/

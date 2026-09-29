@@ -1,0 +1,20 @@
+# Web configuration for proxmox-node-exporter: TLS and/or HTTP basic auth.
+# Enable it with ARGS="--web.config-file=/etc/proxmox-node-exporter/web.ini"
+# in /etc/default/proxmox-node-exporter. Keep this file mode 0600.
+
+[tls]
+# PEM certificate (chain) and key. Changes are picked up automatically, so a
+# renewed certificate (e.g. from ACME) needs no restart.
+#   Reusing the node's own Proxmox certificate works too:
+#   cert_file = /etc/pve/local/pve-ssl.pem
+#   key_file  = /etc/pve/local/pve-ssl.key
+cert_file = /etc/proxmox-node-exporter/tls.crt
+key_file = /etc/proxmox-node-exporter/tls.key
+# Require clients (Prometheus) to present a certificate signed by this CA:
+# client_ca_file = /etc/proxmox-node-exporter/client-ca.crt
+# min_version = TLSv1.3
+
+[basic_auth_users]
+# username = password hash. Create a hash with:
+#   python3 /opt/proxmox-node-exporter/proxmox-node-exporter.pyz --hash-password
+# prometheus = pbkdf2_sha256$200000$...$...

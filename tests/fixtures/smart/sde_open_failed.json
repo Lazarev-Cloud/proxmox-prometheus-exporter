@@ -1,0 +1,35 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      3
+    ],
+    "svn_revision": "5338",
+    "platform_info": "x86_64-linux-6.8.12-2-pve",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--json",
+      "-a",
+      "-n",
+      "standby",
+      "-d",
+      "sat",
+      "/dev/sde"
+    ],
+    "drive_database_version": {
+      "string": "7.3/5319"
+    },
+    "messages": [
+      {
+        "string": "Smartctl open device: /dev/sde [SAT] failed: No such device",
+        "severity": "error"
+      }
+    ],
+    "exit_status": 2
+  }
+}

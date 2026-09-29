@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Lazarev-Cloud/proxmox-prometheus-exporter/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
