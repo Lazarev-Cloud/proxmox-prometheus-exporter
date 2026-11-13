@@ -19,10 +19,10 @@ jobs:
       id-token: write      # Sigstore signing of the provenance attestation
       attestations: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Tag matches the package version
@@ -40,14 +40,14 @@ jobs:
           cat dist/SHA256SUMS
       - name: Smoke test
         run: /usr/bin/python3 -I dist/proxmox-node-exporter.pyz --once --collectors system > /dev/null
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/*.pyz
             dist/*.tar.gz
             dist/*.whl
             dist/install.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -61,10 +61,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist

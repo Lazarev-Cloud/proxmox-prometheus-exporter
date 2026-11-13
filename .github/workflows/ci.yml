@@ -22,10 +22,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Install pinned dev dependencies
@@ -54,10 +54,10 @@ jobs:
         # 3.9: Proxmox VE 7 (Debian 11), 3.11: PVE 8 (Debian 12), 3.13: PVE 9 (Debian 13)
         python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install pinned dev dependencies
@@ -66,7 +66,7 @@ jobs:
           python -m pip install --no-deps -e .
       - name: pytest
         run: pytest --cov --cov-report=term --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.python == '3.13'
         with:
           name: coverage
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: promtool check rules / test rules
@@ -93,10 +93,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Build release artefacts
@@ -132,7 +132,7 @@ jobs:
             packaging/proxmox-node-exporter-update.service packaging/proxmox-node-exporter-update.timer
           systemd-analyze security --offline=true --threshold=50 --no-pager \
             packaging/proxmox-node-exporter.service
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -143,7 +143,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install, upgrade with rollback, uninstall
@@ -162,7 +162,7 @@ jobs:
           - debian: trixie  # Python 3.13, PEP 668: pip install is blocked (issue #2)
             pve: Proxmox VE 9
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Boot Debian with systemd
